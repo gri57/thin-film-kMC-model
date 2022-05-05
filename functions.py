@@ -4,6 +4,7 @@
 
 #from contracts import contract
 import numpy as np
+from scipy.optimize import fsolve
 from scipy.integrate import odeint
 
 
@@ -134,6 +135,26 @@ def update_neighs_pbc( N, callerid, x, y, surfacemat, neighsmat, neighstally ):
 	return neighsmat, neighstally
 
 
+#@contract( neighstally='ndarray', returns='float' )
+def calcWd( neighstally ):
+	
+	"""
+	Calculate the total desorption rate. 
+	"""
+	
+	# preallocate the array for storing the values of desorption event rates
+	Pd = np.ndarray( 5, 'float' )
+	
+	# populate the preallocated array with the calculated rates of desorption events
+	for i in range(f):
+		Pd[i] = calcPd( i+1 )
+		
+	# Calculate the total desorption rate
+	Wd = np.sum( neighstally*Pd )
+	
+	return Wd
+
+
 #@contract( neighstally='ndarray', f='int,>=1,<=5', returns='float' )
 def calcWm( neighstally, f = 5 ):
 	
@@ -159,26 +180,6 @@ def calcWm( neighstally, f = 5 ):
 	Wm = np.sum( neighstally[0:f]*Pm )
 	
 	return Wm
-
-
-#@contract( neighstally='ndarray', returns='float' )
-def calcWd( neighstally ):
-	
-	"""
-	Calculate the total desorption rate. 
-	"""
-	
-	# preallocate the array for storing the values of desorption event rates
-	Pd = np.ndarray( 5, 'float' )
-	
-	# populate the preallocated array with the calculated rates of desorption events
-	for i in range(f):
-		Pd[i] = calcPd( i+1 )
-		
-	# Calculate the total desorption rate
-	Wd = np.sum( neighstally*Pd )
-	
-	return Wd
 
 
 #@contract( n='int,>=1,<=5', returns='float' )
@@ -330,11 +331,11 @@ def FFSSparams():
 	# Make an array for the independent variable (dimensionless distance)
 	eta_0 = 0.
 	eta_inf = 6.0
-	d_eta = 0.02
+	d_eta = 0.5
 	eta = np.arange( eta_0, eta_inf, d_eta )
 	
 	return rho_b, rho, f0, f_eta_0, eta, eta_0, d_eta, eta_inf
-	
+
 
 #@contract( f_eta_2_0='float', returns='ndarray' )
 def calcFluidFlowSS(f_eta_2_0):
@@ -416,25 +417,20 @@ def FluidFlowSS( fvars, eta, params ):
 	return derivs
 
 
-#@contract( x='ndarray', eta='ndarray', params='list', returns='ndarray' )
-def MassTransfMoL( x, eta, params ):
+#@contract( x='ndarray', tao='ndarray', params='list', returns='ndarray' )
+def MassTransfMoL( x, tao, params ):
 	
 	"""
 	The mass transfer equation - equation 3-3 of Shabnam's PhD thesis.
 	
-	x is the value of the dependent variable at all internal nodes (excludes
-	boundary conditions). Dimensions of x are the same as the derivs variable 
-	that is returned by this function, and x is 2 entries shorter than 
-	the f variable that holds the values of the stream function since 
-	f is solved for the boundary condition nodes as well as all internal 
-	nodes.
+	x is the value of the dependent variable at all nodes. 
+	Dimensions of x are the same as the derivs variable that is returned 
+	by this function, and the f variable that holds the values of the 
+	stream function.
 	"""
 	
 	# 1/Sc, where Sc is the Schmidt number of the precursor
-	Sc_inv = 1.
-	
-	# Boundary condition for the mole fraction of the precursor (x) at infinite eta
-	x_at_etainf = 1.
+	Sc_inv = 1./1.
 	
 	# Unpack the parameter values: the values of the stream function at steady 
 	# state (f) and the boundary condition at eta = 0 (value of di_x/d_eta at eta = 0)
@@ -448,21 +444,23 @@ def MassTransfMoL( x, eta, params ):
 	d_eta2_inv = np.power( d_eta, -2. )
 	
 	# Preallocate the variable for storage of derivatives at all internal nodes
-	derivs = np.ndarray( max(f.shape)-2, 'float' )
+	derivs = np.ndarray( max(f.shape), 'float' )
 	
-	# Calculate the time derivative of eta at the node adjacent to the eta = 0 boundary condition 
-	# derivs[0] node corresponds to f[1] node
-	x_at_eta0 = x[1] - 2. * d_eta * bc0
-	derivs[0] = Sc_inv * d_eta2_inv * ( x_at_eta0 - 2.*x[0] + x[1] ) + f[1] * 2. * d_eta_inv * ( x[1] - x_at_eta0 )
+	# Calculate x at eta = 0 using the reverse of forward difference approximation of the derivative
+	x[0] = x[1] - d_eta * bc0
 	
-	# Calculate the time derivative of eta at each node that is not adjacent to a boundary
-	# Using array math instead of a for loop. NumPy does not include the last value in the 
+	# Calculate the time derivative of eta at the eta = 0 node.
+	# forward difference approximation
+	derivs[0] = Sc_inv * d_eta2_inv * ( x[2] - 2.*x[1] + x[0] ) + f[0] * d_eta_inv * ( x[1] - x[0] )
+	
+	# Calculate the time derivative of eta at each internal node.
+	# central difference approximation
+	# Using array math instead of a for loop for faster calculations. NumPy does not include the last value in the 
 	# indeces used below: [1:-1] will include values from index 1 to index -2 (second last), not -1 (last).
-	derivs[1:-1] = Sc_inv * d_eta2_inv * ( x[0:-2] - 2.*x[1:-1] + x[2:] ) + f[2:-2] * 2. * d_eta_inv * ( x[2:] - x[0:-2] )
+	derivs[1:-1] = Sc_inv * d_eta2_inv * ( x[0:-2] - 2.*x[1:-1] + x[2:] ) + f[1:-1] * 2. * d_eta_inv * ( x[2:] - x[0:-2] )
 	
-	# Calculate the time derivative of eta at the node adjacent to the eta = inf boundary condition
-	# derivs[-1] node corresponds to the f[-2] node
-	derivs[-1] = Sc_inv * d_eta2_inv * ( x[-2] - 2.*x[-1] + x_at_etainf ) + f[-2] * 2. * d_eta_inv * ( x_at_etainf - x[-2] )
+	# The time derivative of eta at the eta = inf node is always zero because the boundary condition is x( eta=inf ) = X.
+	derivs[-1] = 0.0
 	
 	return derivs
 
