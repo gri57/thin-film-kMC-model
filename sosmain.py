@@ -7,7 +7,7 @@ tic()
 
 thinfilm = ThinFilm(100) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables(thinfilm.N, 0.1, 100.0) # provide N, the coupling time and the total time
+observables = Observables(thinfilm.N, 0.1, 1.0) # provide N, the coupling time and the total time
 
 # populate the list of neighbours 
 thinfilm.findneighbours_pbc() 

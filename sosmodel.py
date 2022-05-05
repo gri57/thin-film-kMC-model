@@ -660,14 +660,14 @@ def produce_output(observables):
 	
 	"""
 
-	print 'Rougness results'
-	print observables.roughness
+	print ('Rougness results')
+	print (observables.roughness)
 
-	print 'Thickness results'
-	print observables.thickness
+	print ('Thickness results')
+	print (observables.thickness)
 
-	print 'Growth rate results'
-	print observables.growthrate
+	print ('Growth rate results')
+	print (observables.growthrate)
 
 	plt.figure()
 	plt.xlabel( 'simulation progress' )
