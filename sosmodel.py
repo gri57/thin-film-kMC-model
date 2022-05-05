@@ -666,20 +666,21 @@ def produce_output(observables):
 	plt.ylabel( 'surface roughness' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
 	plt.plot( observables.roughness )
+	plt.savefig( 'roughness.png' )
 
 	plt.figure()
 	plt.xlabel( 'simulation time' )
 	plt.ylabel( 'growth rate' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
 	plt.plot( observables.growthrate )
+	plt.savefig( 'growthrate.png' )
 
 	plt.figure()
 	plt.xlabel( 'simulation time' )
 	plt.ylabel( 'thickness' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
 	plt.plot( observables.thickness )
-
-	plt.show()
+	plt.savefig( 'thickness.png' )
 
 	return None
 
