@@ -56,7 +56,7 @@ class ThinFilm(object):
 		self.Wd = 0.
 		self.Wm = 0.
 		
-		self.R = 1.987 # cal/K.mol - gas constant
+		self.R = 1.987 # cal/K.mol - gas constant (used in nu0, Wa requires 8.314)
 		self.T = 800. # Kelvin
 
 		# parameters from Table 3-1 of Shabnam's PhD thesis
@@ -82,7 +82,7 @@ class ThinFilm(object):
 		self.Pm = self.A * self.Pd # equation 3-11
 		
 		# The combination of equations 3-8 and 3-13, without xgrow (which will come from an instance of GasLayer)
-		self.Wa_prefactor = self.S0 * self.P * np.power(2. * np.pi * self.m * self.R * self.T, -0.5) * np.power(self.Ctot, -1.) * np.power(self.N, 2.)
+		self.Wa_prefactor = self.S0 * self.P * np.power(2. * np.pi * self.m * 8.314 * self.T, -0.5) * np.power(self.Ctot, -1.) * np.power(self.N, 2.)
 
 
 	def adsorption_event(self, x, y):
@@ -262,7 +262,15 @@ class ThinFilm(object):
 		
 		return None
 
+	def update_Wd_Wm_Wtot_inv( self ):	
 
+		""" Update and store the total desorption and migration rates. """
+
+		self.calcWd()
+		self.calcWm()
+		Wtotal = self.Wa + self.Wd + self.Wm
+		
+		return Wtotal, np.power(Wtotal, -1.)
 
 class GasLayer(object):
 	
@@ -294,7 +302,7 @@ class GasLayer(object):
 		
 		self.X = 2e-6
 		self.eta_inf = 6.0
-		self.d_eta = 0.05
+		self.d_eta = 0.1
 		
 		# Initial precursor mole fraction profile is uniform, but during the simulation 
 		# the values should decrease the closer we get to the surface.
@@ -539,11 +547,9 @@ def run_sos_KMC(thinfilm, gaslayer):
 	
 	# Calculate the total rates of adsorption, desorption and migration
 	thinfilm.calcWa(gaslayer.xgrow)
-	thinfilm.calcWd()
-	thinfilm.calcWm()
-	
-	Wtotal = thinfilm.Wa + thinfilm.Wd + thinfilm.Wm
-	Wtotal_inv = np.power(Wtotal, -1.)
+	Wtotal, Wtotal_inv = thinfilm.update_Wd_Wm_Wtot_inv()
+
+	#print "Wa, Wd, Wm, Wtot = ", thinfilm.Wa, thinfilm.Wd, thinfilm.Wm, Wtotal
 
 	''' Use Wa, Wd and Wm to select adsorption, desorption or migration (a/d/m) '''
 
@@ -564,6 +570,7 @@ def run_sos_KMC(thinfilm, gaslayer):
 		# update the count of adsorbed atoms
 		thinfilm.Na += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
 		
+		
 	elif zeta < (thinfilm.Wa+thinfilm.Wd)*Wtotal_inv:
 		
 		''' perform desorption '''
@@ -573,7 +580,8 @@ def run_sos_KMC(thinfilm, gaslayer):
 		
 		# update the count of desorbed atoms
 		thinfilm.Nd += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
-		
+
+				
 	else:
 		
 		''' perform migration '''

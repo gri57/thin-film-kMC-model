@@ -5,7 +5,7 @@ from tictoc import * # import tic() and toc()
 
 thinfilm = ThinFilm( 30 ) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables( thinfilm.N, 0.01, 1.0 ) # provide N, the coupling time and the total time
+observables = Observables( thinfilm.N, 0.1, 1.0 ) # provide N, the coupling time and the total time
 
 ''' Calculate the dimensionless stream function '''
 
@@ -33,7 +33,9 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 		
 		calc_xgrow_PDE( thinfilm, gaslayer, observables.coupling_time )
 		print 'x_grow = ', gaslayer.xgrow
-		print 'mole fraction profile: ', gaslayer.xprofile
+		if gaslayer.xgrow < 0:
+			raise ValueError('Precursor mole fraction on film surface (xgrow) is negative.')
+		#print 'mole fraction profile: ', gaslayer.xprofile
 		
 		observables.update_current_time()
 		observables.calculate_observables(thinfilm.surfacemat)
