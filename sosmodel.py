@@ -159,15 +159,12 @@ class ThinFilm(object):
 		
 		"""
 		
-		# Retrieve the current height at the site.
-		currh = self.surfacemat[x,y] 
-		
-		# Using the callerid flag, find out the height before the action of 
+		# Using the callerid flag, find out the height at the site before the action of 
 		# the function that called update_neighs_pbc.
 		if callerid == 'ads':
-			prevh = currh - 1
+			prevh = self.surfacemat[x,y] - 1
 		elif callerid == 'des':
-			prevh = currh + 1
+			prevh = self.surfacemat[x,y] + 1
 		
 		''' Update neighbour count at (x,y) site. '''
 		
@@ -180,18 +177,18 @@ class ThinFilm(object):
 			# 5 is the maximum number of nearest neighbours an atom can have because the atom 
 			# 	directly below is also its nearest neighbour.
 			
-			if currh <= self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ]:
+			if self.surfacemat[x,y] <= self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ]:
 				# For any current site, a neighbouring site contributes to neighbour count if 
 				# height of the current site is <= height of the neighbouring site.
 				siteneighs += 1
 				
 			''' Update neighbour count at those sites that were affected by the adsorption/desorption event. '''
 			
-			if self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= currh and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > prevh:
+			if self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= self.surfacemat[x,y] and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > prevh:
 				# current site now is but was not a neighbour of the other site 
 				self.neighsmat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] += 1
 				
-			elif self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > currh and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= prevh:
+			elif self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > self.surfacemat[x,y] and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= prevh:
 				# current site is not but was a neighbour of the other site 
 				self.neighsmat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] -= 1
 				
