@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import fsolve
 from scipy.integrate import odeint
+from matplotlib import pyplot as plt
 
 
 
@@ -38,7 +39,7 @@ class ThinFilm(object):
 
 	def __init__( self, N ):
 		
-		""" Return a new ThinFilm object. """
+		""" Return a new ThinFilm object """
 		
 		self.N = N
 		
@@ -263,8 +264,7 @@ class ThinFilm(object):
 
 class GasLayer(object):
 	
-	"""
-	The class contains the attributes of and methods that can be applied 
+	""" The class contains the attributes of and methods that can be applied 
 	to the boundary gas layer above the thin film.
 	
 	Attributes:
@@ -286,9 +286,9 @@ class GasLayer(object):
 	
 	"""
 
-	def __init__( self ):
+	def __init__(self):
 		
-		''' Return a new GasLayer object. '''
+		''' Return a new GasLayer object '''
 		
 		self.X = 2e-6
 		self.eta_inf = 6.0
@@ -320,7 +320,7 @@ class GasLayer(object):
 		self.df_deta_inf = 1.0 # value of the first derivative of the stream function w.r.t. eta at the eta = inf boundary
 
 
-	def calcFluidFlowSS( self, df_deta_2_0 ):
+	def calcFluidFlowSS(self, df_deta_2_0):
 		
 		"""
 		Solve the fluid flow conservation equation at steady state (equation 3-1 in Shabnam's PhD thesis).
@@ -350,7 +350,7 @@ class GasLayer(object):
 
 
 	@staticmethod
-	def FluidFlowSS( fvars, eta, params ):
+	def FluidFlowSS(fvars, eta, params):
 		
 		"""
 		('list', 'ndarray', 'list') -> 'list'
@@ -372,6 +372,69 @@ class GasLayer(object):
 		
 		return derivs
 
+
+
+
+class Observables( object ):
+	
+	""" This class contains simulation results. 
+	
+	Attributes:
+		N
+		coupling_time
+		total_time
+		current_time
+		roughness
+		thickness
+		growthrate
+		surfacemat_previous
+	
+	"""
+	
+	def __init__(self, N, coupling_time, total_time):
+		
+		''' Return a new Observables object '''
+		
+		self.N = N # @grigoriy - this is a bit redundant with ThinFilm
+		self.coupling_time = coupling_time
+		self.total_time = total_time
+		
+		self.Nsq_inv = np.power( self.N, -2. )
+		
+		self.current_time = 0.0 # initial value, updated during simulation
+		
+		self.roughness = np.zeros(int(self.total_time / self.coupling_time) + 1, 'float') 
+		
+		self.thickness = np.ones(int(self.total_time / self.coupling_time) + 1, 'float') # initial thickness is 1 (only one layer is deposited initially)
+		
+		self.growthrate = np.zeros(int(self.total_time / self.coupling_time) + 1, 'float') # initial growth rate is zero (at time zero)
+		
+		self.surfacemat_previous = np.ones( (self.N,self.N), 'int' ) # @grigoriy - this is a bit redundant with ThinFilm
+		
+		
+	def calc_observables(self, surfacemat):
+		
+		''' Calculate roughness, growth rate and thickness '''
+		
+		# roughness - equation 3-17 of Shabnam's PhD thesis
+		# find out the difference between current location and row immediately below
+		# current row and row immediately above yields the same result, hence multiplication by 2
+		self.roughness[int(self.current_time / self.coupling_time)] += 2.*np.sum(np.abs( surfacemat[1:,:] - surfacemat[0:-1,:] )) + 2.*np.sum(np.abs( surfacemat[0,:] - surfacemat[-1,:] ))
+		# the difference between the current column and column immediately before is the same as between current and immediately after
+		self.roughness[int(self.current_time / self.coupling_time)] += 2.*np.sum(np.abs( surfacemat[:,1:] - surfacemat[:,0:-1] )) + 2.*np.sum(np.abs( surfacemat[:,-1] - surfacemat[:,0] ))
+		self.roughness[int(self.current_time / self.coupling_time)] *= self.Nsq_inv
+		# @grigoriy - the addition of 1 in equation 3-17 is handled at the end of sosmain.py (avoid redundant calculations)
+		
+		# thickness - equation 3-18
+		self.thickness[int(self.current_time / self.coupling_time)] = np.sum( surfacemat ) * self.Nsq_inv
+		
+		# growth rate - equation 3-19
+		self.growthrate[int(self.current_time / self.coupling_time)] = np.sum( surfacemat - self.surfacemat_previous ) * self.Nsq_inv / self.coupling_time
+		
+		# store the matrix with heights at each site for the next growth rate calculation
+		self.surfacemat_previous = surfacemat.copy()
+
+		return None
 
 
 def MassTransfMoL( x, tao, params ):
@@ -579,4 +642,42 @@ def run_sos_KMC(thinfilm, gaslayer):
 	# @grigoriy - must reset thinfilm.dtkmc when it exceeds the coupling time
 	
 	return None
+
+
+def produce_output(observables):
+	
+	""" This function is called by sosmain.py to produce output 
+	
+	observables: 	instance of Observables class
+	
+	"""
+
+	print 'Rougness results'
+	print observables.roughness
+
+	print 'Thickness results'
+	print observables.thickness
+
+	print 'Growth rate results'
+	print observables.growthrate
+
+	plt.figure()
+	plt.xlabel( 'simulation time' )
+	plt.ylabel( 'surface roughness' )
+	plt.plot( observables.roughness )
+
+	plt.figure()
+	plt.xlabel( 'simulation time' )
+	plt.ylabel( 'growth rate' )
+	plt.plot( observables.growthrate )
+
+	plt.figure()
+	plt.xlabel( 'simulation time' )
+	plt.ylabel( 'thickness' )
+	plt.plot( observables.thickness )
+
+	plt.show()
+
+	return None
+
 

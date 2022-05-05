@@ -1,5 +1,4 @@
 from sosmodel import *
-from matplotlib import pyplot as plt
 import time
 
 def tic():
@@ -21,12 +20,12 @@ def toc():
         print "Elapsed time is " + str(time.time() - startTime_for_tictoc) + " seconds."
     else:
         print "Toc: start time not set"
-     
 
 ''' Create class instances (objects) '''
 
-thinfilm = ThinFilm( 100 ) # the number of sites along an edge of the square film must be provided
+thinfilm = ThinFilm( 150 ) # the number of sites along an edge of the square film must be provided
 gaslayer = GasLayer()
+observables = Observables( thinfilm.N, 0.1, 10.0 ) # provide coupling time and total time
 
 ''' Calculate the dimensionless stream function '''
 
@@ -40,28 +39,30 @@ fsolve( gaslayer.calcFluidFlowSS, 1.2 ) # provide the initial guess for the 2nd 
 
 ''' Conduct the coupled KMC PDE simulation '''
 
-coupling_time = 0.1
-total_time = 1.0
-current_time = 0.0
-
 tic()
 
-while current_time < total_time:
+while observables.current_time < observables.total_time:
 
-	if thinfilm.dtkmc < coupling_time:
+	if thinfilm.dtkmc < observables.coupling_time:
 
 		run_sos_KMC(thinfilm, gaslayer)
 
 	else:
 
-		calc_xgrow_PDE( thinfilm, gaslayer, coupling_time )
+		calc_xgrow_PDE( thinfilm, gaslayer, observables.coupling_time )
 		
-		current_time += coupling_time # @grigoriy - should coupling_time or thinfilm.dtkmc be added to current_time?
+		observables.current_time += observables.coupling_time # @grigoriy - should coupling_time or thinfilm.dtkmc be added to current_time?
+		observables.calc_observables(thinfilm.surfacemat)
+		
 		thinfilm.dtkmc = 0. # reset KMC time
 		thinfilm.Na = 0.
 		thinfilm.Nd = 0.
 		
-		print 'Current simulation time:', current_time # progress report
+		print 'Current simulation time:', observables.current_time # progress report
+
+observables.roughness += 1. # fulfillment of equation 3-17 (see Observables.calc_observables method documentation for details)
 
 toc()
+
+produce_output(observables)
 
