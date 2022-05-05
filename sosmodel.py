@@ -91,8 +91,6 @@ class ThinFilm(object):
 		
 		"""
 		
-		print 'adsorption'
-		
 		# Add an atom to the surface at the specified site.
 		# surfacemat will be updated and stored
 		self.surfacemat[x,y] += 1
@@ -111,8 +109,6 @@ class ThinFilm(object):
 		y:	(int) y coordinate of the atom on the thin film surface
 		
 		"""
-		
-		print 'desorption'
 		
 		# Remove an atom from the surface at the specified site.
 		# surfacemat will be updated and stored
@@ -136,8 +132,6 @@ class ThinFilm(object):
 		yf:	(int) final y coordinate of the atom
 		
 		"""
-		
-		print 'migration'
 		
 		# Desorption event.
 		self.desorption_event( xi, yi )
@@ -326,13 +320,12 @@ class GasLayer(object):
 		self.df_deta_inf = 1.0 # value of the first derivative of the stream function w.r.t. eta at the eta = inf boundary
 
 
-	#@contract( f_eta_2_0='float', returns='ndarray' )
 	def calcFluidFlowSS( self, df_deta_2_0 ):
 		
 		"""
 		Solve the fluid flow conservation equation at steady state (equation 3-1 in Shabnam's PhD thesis).
 		
-		df_deta_2_0  -  the initial value of the second derivative at the first boundary.
+		df_deta_2_0: (float) the initial value of the second derivative at the first boundary.
 		
 		This is a BVP ODE problem (not PDE, since the equation is solved at steady state).
 		There are three known boundary conditions (dependent variable and its first derivative are 
@@ -352,14 +345,16 @@ class GasLayer(object):
 
 		# Return the difference between the known value of the first derivative at the 
 		# second boundary (eta = inf) and its estimated value. 
+		# (float)
 		return self.df_deta_inf - fvalues[-1,1]
 
 
-	#@contract( fvars='list', eta='ndarray', params='list', returns='list' )
 	@staticmethod
 	def FluidFlowSS( fvars, eta, params ):
 		
 		"""
+		('list', 'ndarray', 'list') -> 'list'
+		
 		The fluid flow conservation equation at steady state - equation 3-1 of Shabnam's PhD thesis, 
 		written at steady state and as a system of first order ODEs.
 		
@@ -379,10 +374,11 @@ class GasLayer(object):
 
 
 
-#@contract( x='ndarray', tao='ndarray', params='list', returns='ndarray' )
 def MassTransfMoL( x, tao, params ):
 	
 	"""
+	('ndarray', 'ndarray', 'list') -> 'ndarray'
+	
 	Numerical integration of the mass transfer equation - equation 3-3 of Shabnam's PhD 
 	thesis - is done using the Method of Lines.
 	
@@ -488,25 +484,31 @@ def run_sos_KMC(thinfilm, gaslayer):
 		
 		''' perform adsorption '''
 		
+		print 'adsorption'
+		
 		# choose a site randomly (pick a random index for the arrays, Python indexing starts at zero)
 		thinfilm.adsorption_event( np.random.random_integers(0, thinfilm.N-1), np.random.random_integers(0, thinfilm.N-1) )
 		
 		# update the count of adsorbed atoms
-		thinfilm.Na += 1. # @grigoriy - should this be reset when dtkmc exceeds dtcouple?
+		thinfilm.Na += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
 		
 	elif zeta < (thinfilm.Wa+thinfilm.Wd)*Wtotal_inv:
 		
 		''' perform desorption '''
 		
+		print 'desorption'
+		
 		# choose a site randomly (pick a random index for the arrays, Python indexing starts at zero)
 		thinfilm.desorption_event( np.random.random_integers(0, thinfilm.N-1), np.random.random_integers(0, thinfilm.N-1) )
 		
 		# update the count of desorbed atoms
-		thinfilm.Nd += 1. # @grigoriy - should this be reset when dtkmc exceeds dtcouple?
+		thinfilm.Nd += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
 		
 	else:
 		
 		''' perform migration '''
+		
+		print 'migration'
 		
 		# choose one of the 5 "classes" (atoms with 1 neighbour, 2, 3, 4 or 5)
 		
@@ -582,6 +584,7 @@ def run_sos_KMC(thinfilm, gaslayer):
 	# 1e-53 is practically zero, but prevents np.log(sigma) from giving "-inf" for an answer
 	sigma = np.random.uniform( low=1e-53, high=1.0 )
 	thinfilm.dtkmc += -np.log( sigma ) * Wtotal_inv    # equation 3-16 of Shabnam's PhD thesis
+	# @grigoriy - must reset thinfilm.dtkmc when it exceeds the coupling time
 	
 	print 'dtkmc = ', thinfilm.dtkmc # diagnostics
 	
