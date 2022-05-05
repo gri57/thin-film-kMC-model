@@ -425,6 +425,7 @@ class Observables( object ):
 		self.total_time = total_time
 		
 		self.Nsq_inv = np.power( self.N, -2. )
+		self.twoNsq_inv = 0.5 * self.Nsq_inv
 		
 		# optimization for calculate_observables function
 		self.Nsq_inv_coupling_time_inv = self.Nsq_inv / self.coupling_time 
@@ -448,11 +449,10 @@ class Observables( object ):
 		# roughness - equation 3-17 of Shabnam's PhD thesis
 		# find out the difference between current location and row immediately below
 		# current row and row immediately above yields the same result, hence multiplication by 2
-		# use "round" in conjunction with "int" (instead of only using int) to ensure that integer indeces are not skipped by "int"
 		self.roughness[counter] += 2.*np.sum(np.abs(surfacemat[1:,:] - surfacemat[0:-1,:])) + 2.*np.sum(np.abs(surfacemat[0,:] - surfacemat[-1,:]))
 		# the difference between the current column and column immediately before is the same as between current and immediately after
 		self.roughness[counter] += 2.*np.sum(np.abs(surfacemat[:,1:] - surfacemat[:,0:-1])) + 2.*np.sum(np.abs(surfacemat[:,-1] - surfacemat[:,0]))
-		self.roughness[counter] *= self.Nsq_inv
+		self.roughness[counter] *= self.twoNsq_inv
 		# @grigoriy - the addition of 1 in equation 3-17 is handled at the end of sosmain.py (avoid redundant calculations)
 		
 		# thickness - equation 3-18
