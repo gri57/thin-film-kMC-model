@@ -30,6 +30,7 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 	else:
 		print ''
 		print 'Na, Nd, Nm = ', thinfilm.Na, ',', thinfilm.Nd, ',', thinfilm.Nd
+		print 'Wa, Wd, Wm = ', thinfilm.Wa, ',', thinfilm.Wd, ',', thinfilm.Wm
 		
 		calc_xgrow_PDE( thinfilm, gaslayer, observables.coupling_time )
 		print 'x_grow = ', gaslayer.xgrow

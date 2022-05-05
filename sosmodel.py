@@ -324,6 +324,8 @@ class GasLayer(object):
 		
 		self.Sc_inv = 1./self.Sc
 		
+		self.RaRd_prefactor = self.Sc*np.power( 2. * self.a * self.mu_b_rho_b, -0.5 ) # for equation 3-6
+		
 		# Boundary conditions for the stream function (equation 3-1) 
 		self.f0 = 0. # value of the stream function at the eta = 0 boundary
 		self.df_deta_0 = 0. # value of the first derivative of the stream function w.r.t. eta at the eta = 0 boundary
@@ -519,9 +521,12 @@ def calc_xgrow_PDE( thinfilm, gaslayer, dtcouple ):
 	
 	# The difference between adsorption and desorption rates (equation 3-20 of Shabnam's PhD thesis)
 	Ra_Rd = ( thinfilm.Na - thinfilm.Nd ) * np.power( 2. * gaslayer.a * np.power(thinfilm.N, 2.) * dtcouple, -1. )
+	#Ra_Rd = ( thinfilm.Na - thinfilm.Nd ) * np.power( np.power(thinfilm.N, 2.) * dtcouple, -1. )
 
 	# Boundary condition (di_x/di_eta value) at eta = 0 (equation 3-6 of Shabnam's PhD thesis)
-	bc0 = gaslayer.Sc*Ra_Rd*np.power( 2. * gaslayer.a * gaslayer.mu_b_rho_b, -0.5 ) 
+	bc0 = gaslayer.RaRd_prefactor * Ra_Rd
+
+	#print gaslayer.Sc*np.power(2.*gaslayer.a*gaslayer.mu_b_rho_b, -.5 )
 	print 'bc0 = ', bc0
 
 	#print 'x profile and derivatives are ', xdx_values
