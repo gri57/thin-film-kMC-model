@@ -484,8 +484,6 @@ def run_sos_KMC(thinfilm, gaslayer):
 		
 		''' perform adsorption '''
 		
-		print 'adsorption'
-		
 		# choose a site randomly (pick a random index for the arrays, Python indexing starts at zero)
 		thinfilm.adsorption_event( np.random.random_integers(0, thinfilm.N-1), np.random.random_integers(0, thinfilm.N-1) )
 		
@@ -496,8 +494,6 @@ def run_sos_KMC(thinfilm, gaslayer):
 		
 		''' perform desorption '''
 		
-		print 'desorption'
-		
 		# choose a site randomly (pick a random index for the arrays, Python indexing starts at zero)
 		thinfilm.desorption_event( np.random.random_integers(0, thinfilm.N-1), np.random.random_integers(0, thinfilm.N-1) )
 		
@@ -507,8 +503,6 @@ def run_sos_KMC(thinfilm, gaslayer):
 	else:
 		
 		''' perform migration '''
-		
-		print 'migration'
 		
 		# choose one of the 5 "classes" (atoms with 1 neighbour, 2, 3, 4 or 5)
 		
@@ -527,8 +521,6 @@ def run_sos_KMC(thinfilm, gaslayer):
 			Wm_varying += thinfilm.neighstally[neighclass] * thinfilm.Pm[neighclass] 
 			neighclass += 1
 			# this "while" loop will stop as soon as zetamod <= Wm_varying, leaving us with the correct "neighclass" value
-
-		print "Neighclass ", neighclass # diagnostics
 
 		# find out the x and y indeces of atoms that have the specified number of neighbours
 		indecesofatoms = np.where( thinfilm.neighsmat == neighclass )
@@ -585,8 +577,6 @@ def run_sos_KMC(thinfilm, gaslayer):
 	sigma = np.random.uniform( low=1e-53, high=1.0 )
 	thinfilm.dtkmc += -np.log( sigma ) * Wtotal_inv    # equation 3-16 of Shabnam's PhD thesis
 	# @grigoriy - must reset thinfilm.dtkmc when it exceeds the coupling time
-	
-	print 'dtkmc = ', thinfilm.dtkmc # diagnostics
 	
 	return None
 

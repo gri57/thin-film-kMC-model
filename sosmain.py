@@ -25,7 +25,7 @@ def toc():
 
 ''' Create class instances (objects) '''
 
-thinfilm = ThinFilm( 30 ) # the number of sites along an edge of the square film must be provided
+thinfilm = ThinFilm( 100 ) # the number of sites along an edge of the square film must be provided
 gaslayer = GasLayer()
 
 ''' Calculate the dimensionless stream function '''
@@ -55,11 +55,11 @@ while current_time < total_time:
 	else:
 
 		calc_xgrow_PDE( thinfilm, gaslayer, coupling_time )
-		print 'Current time', current_time
 		current_time += coupling_time # @grigoriy - should coupling_time or thinfilm.dtkmc be added to current_time?
 		thinfilm.dtkmc = 0. # reset KMC time
 		thinfilm.Na = 0.
 		thinfilm.Nd = 0.
+		print 'Current simulation time:', current_time # progress report
 
 toc()
 
