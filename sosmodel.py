@@ -69,7 +69,7 @@ class ThinFilm(object):
 		self.P = 1e5 # Pa
 		self.S0 = 0.1 # the sticking coefficient
 		
-		self.nu0 = 0.1 * self.kd0 * np.exp(-self.Ed/(self.R * self.T)) # equation 3-10 of Shabnam's PhD thesis
+		self.nu0 = self.kd0 * np.exp(-self.Ed/(self.R * self.T)) # equation 3-10 of Shabnam's PhD thesis
 		self.A = np.exp((self.Ed - self.Em)/(self.R * self.T)) # equation 3-12 
 		
 		# The rates of individual desorption events. The number of nearest 
@@ -82,7 +82,7 @@ class ThinFilm(object):
 		self.Pm = self.A * self.Pd # equation 3-11
 		
 		# The combination of equations 3-8 and 3-13, without xgrow (which will come from an instance of GasLayer)
-		self.Wa_prefactor = 0.1 * self.S0 * self.P * np.power(2. * np.pi * self.m * 8.314 * self.T, -0.5) * np.power(self.Ctot, -1.) * np.power(self.N, 2.)
+		self.Wa_prefactor = self.S0 * self.P * np.power(2. * np.pi * self.m * 8.314 * self.T, -0.5) * np.power(self.Ctot, -1.) * np.power(self.N, 2.)
 
 
 	def adsorption_event(self, x, y):
@@ -425,7 +425,6 @@ class Observables( object ):
 		self.total_time = total_time
 		
 		self.Nsq_inv = np.power( self.N, -2. )
-		self.twoNsq_inv = 0.5 * self.Nsq_inv
 		
 		# optimization for calculate_observables function
 		self.Nsq_inv_coupling_time_inv = self.Nsq_inv / self.coupling_time 
@@ -449,10 +448,11 @@ class Observables( object ):
 		# roughness - equation 3-17 of Shabnam's PhD thesis
 		# find out the difference between current location and row immediately below
 		# current row and row immediately above yields the same result, hence multiplication by 2
+		# use "round" in conjunction with "int" (instead of only using int) to ensure that integer indeces are not skipped by "int"
 		self.roughness[counter] += 2.*np.sum(np.abs(surfacemat[1:,:] - surfacemat[0:-1,:])) + 2.*np.sum(np.abs(surfacemat[0,:] - surfacemat[-1,:]))
 		# the difference between the current column and column immediately before is the same as between current and immediately after
 		self.roughness[counter] += 2.*np.sum(np.abs(surfacemat[:,1:] - surfacemat[:,0:-1])) + 2.*np.sum(np.abs(surfacemat[:,-1] - surfacemat[:,0]))
-		self.roughness[counter] *= self.twoNsq_inv
+		self.roughness[counter] *= self.Nsq_inv
 		# @grigoriy - the addition of 1 in equation 3-17 is handled at the end of sosmain.py (avoid redundant calculations)
 		
 		# thickness - equation 3-18
