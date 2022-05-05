@@ -22,9 +22,9 @@ def toc():
 
 ''' Create class instances (objects) '''
 
-thinfilm = ThinFilm( 100 ) # the number of sites along an edge of the square film must be provided
+thinfilm = ThinFilm( 100 ) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables( thinfilm.N, 0.1, 10.0 ) # provide coupling time and total time
+observables = Observables( thinfilm.N, 0.1, 15.0 ) # provide N, the coupling time and the total time
 
 ''' Calculate the dimensionless stream function '''
 
@@ -40,18 +40,18 @@ fsolve( gaslayer.calcFluidFlowSS, 1.2 ) # provide the initial guess for the 2nd 
 
 tic()
 
-while observables.current_time < observables.total_time:
+while observables.get_current_time() < (observables.total_time - observables.coupling_time):
 
 	if thinfilm.dtkmc < observables.coupling_time:
 
 		run_sos_KMC(thinfilm, gaslayer)
 
 	else:
-
+		
 		calc_xgrow_PDE( thinfilm, gaslayer, observables.coupling_time )
 		
-		observables.current_time += observables.coupling_time # @grigoriy - should coupling_time or thinfilm.dtkmc be added to current_time?
-		observables.calc_observables(thinfilm.surfacemat)
+		observables.update_current_time()
+		observables.calculate_observables(thinfilm.surfacemat)
 		
 		# reset parameters
 		thinfilm.dtkmc = 0. 
@@ -59,8 +59,14 @@ while observables.current_time < observables.total_time:
 		thinfilm.Nd = 0.
 		
 		print 'Current simulation time:', observables.current_time # progress report
+		''' @grigoriy - for some strange reason if at this point observables.current_time equals to 
+		observables.total_time, Python will still think that current_time is less than total_time
+		and will execute the while loop one more time. As a result, it was necessary to use 
+		(observables.total_time - observables.coupling_time) in the while loop condition.
+		'''
 
-observables.roughness += 1. # fulfillment of equation 3-17 (see Observables.calc_observables method documentation for details)
+
+observables.roughness += 1. # fulfillment of equation 3-17 (see Observables.calculate_observables method documentation for details)
 
 toc()
 

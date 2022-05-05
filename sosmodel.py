@@ -402,39 +402,48 @@ class Observables( object ):
 		
 		self.current_time = 0.0 # initial value, updated during simulation
 		
-		self.roughness = np.zeros(int(self.total_time / self.coupling_time) + 1, 'float') 
+		self.roughness = np.zeros(int(round(self.total_time / self.coupling_time)) + 1, 'float') 
 		
-		self.thickness = np.ones(int(self.total_time / self.coupling_time) + 1, 'float') # initial thickness is 1 (only one layer is deposited initially)
+		self.thickness = np.ones(int(round(self.total_time / self.coupling_time)) + 1, 'float') # initial thickness is 1 (only one layer is deposited initially)
 		
-		self.growthrate = np.zeros(int(self.total_time / self.coupling_time) + 1, 'float') # initial growth rate is zero (at time zero)
+		self.growthrate = np.zeros(int(round(self.total_time / self.coupling_time)) + 1, 'float') # initial growth rate is zero (at time zero)
 		
 		self.surfacemat_previous = np.ones( (self.N,self.N), 'int' ) # @grigoriy - this is a bit redundant with ThinFilm
 		
 		
-	def calc_observables(self, surfacemat):
+	def calculate_observables(self, surfacemat):
 		
 		''' Calculate roughness, growth rate and thickness '''
 		
 		# roughness - equation 3-17 of Shabnam's PhD thesis
 		# find out the difference between current location and row immediately below
 		# current row and row immediately above yields the same result, hence multiplication by 2
-		self.roughness[int(self.current_time / self.coupling_time)] += 2.*np.sum(np.abs( surfacemat[1:,:] - surfacemat[0:-1,:] )) + 2.*np.sum(np.abs( surfacemat[0,:] - surfacemat[-1,:] ))
+		# use "round" in conjunction with "int" (instead of only using int) to ensure that integer indeces are not skipped by "int"
+		self.roughness[int(round(self.current_time / self.coupling_time))] += 2.*np.sum(np.abs( surfacemat[1:,:] - surfacemat[0:-1,:] )) + 2.*np.sum(np.abs( surfacemat[0,:] - surfacemat[-1,:] ))
 		# the difference between the current column and column immediately before is the same as between current and immediately after
-		self.roughness[int(self.current_time / self.coupling_time)] += 2.*np.sum(np.abs( surfacemat[:,1:] - surfacemat[:,0:-1] )) + 2.*np.sum(np.abs( surfacemat[:,-1] - surfacemat[:,0] ))
-		self.roughness[int(self.current_time / self.coupling_time)] *= self.Nsq_inv
+		self.roughness[int(round(self.current_time / self.coupling_time))] += 2.*np.sum(np.abs( surfacemat[:,1:] - surfacemat[:,0:-1] )) + 2.*np.sum(np.abs( surfacemat[:,-1] - surfacemat[:,0] ))
+		self.roughness[int(round(self.current_time / self.coupling_time))] *= self.Nsq_inv
 		# @grigoriy - the addition of 1 in equation 3-17 is handled at the end of sosmain.py (avoid redundant calculations)
 		
 		# thickness - equation 3-18
-		self.thickness[int(self.current_time / self.coupling_time)] = np.sum( surfacemat ) * self.Nsq_inv
+		self.thickness[int(round(self.current_time / self.coupling_time))] = np.sum( surfacemat ) * self.Nsq_inv
 		
 		# growth rate - equation 3-19
-		self.growthrate[int(self.current_time / self.coupling_time)] = np.sum( surfacemat - self.surfacemat_previous ) * self.Nsq_inv / self.coupling_time
+		self.growthrate[int(round(self.current_time / self.coupling_time))] = np.sum( surfacemat - self.surfacemat_previous ) * self.Nsq_inv / self.coupling_time
 		
 		# store the matrix with heights at each site for the next growth rate calculation
 		self.surfacemat_previous = surfacemat.copy()
 
 		return None
-
+		
+	
+	def update_current_time(self):
+		self.current_time += self.coupling_time
+		return self.current_time
+		
+		
+	def get_current_time(self):
+		return self.current_time
 
 
 def MassTransfMoL( x, tao, params ):
@@ -662,21 +671,21 @@ def produce_output(observables):
 	print observables.growthrate
 
 	plt.figure()
-	plt.xlabel( 'simulation time' )
+	plt.xlabel( 'simulation progress' )
 	plt.ylabel( 'surface roughness' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
 	plt.plot( observables.roughness )
 	plt.savefig( 'roughness.png' )
 
 	plt.figure()
-	plt.xlabel( 'simulation time' )
+	plt.xlabel( 'simulation progress' )
 	plt.ylabel( 'growth rate' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
 	plt.plot( observables.growthrate )
 	plt.savefig( 'growthrate.png' )
 
 	plt.figure()
-	plt.xlabel( 'simulation time' )
+	plt.xlabel( 'simulation progress' )
 	plt.ylabel( 'thickness' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
 	plt.plot( observables.thickness )
