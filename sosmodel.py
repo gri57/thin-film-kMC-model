@@ -245,8 +245,6 @@ class ThinFilm(object):
 		for x in range(self.N):
 			for y in range(self.N):
 				
-				print 'x,y = ', x,y
-				
 				# Store neighbours' coordinates.
 				
 				self.neighlist[x,y,0,...] = [x-1, y]
@@ -257,26 +255,21 @@ class ThinFilm(object):
 				# Implement periodic boundary conditions. 
 				
 				if self.neighlist[x,y,0,0] < 0:
-					print 'self.neighlist[',x,y,',0,0] < 0', self.neighlist[x,y,0,0] < 0
 					# this coordinate must not be less than zero
 					self.neighlist[x,y,0,0] += self.N
 					
 				if self.neighlist[x,y,1,0] >= self.N: 
-					print 'self.neighlist[',x,y,',1,0] >= self.N', self.neighlist[x,y,1,0] >= self.N
 					# this coordinate should always be less than N
 					self.neighlist[x,y,1,0] -= self.N
 					
 				if self.neighlist[x,y,2,1] < 0:
-					print 'self.neighlist[',x,y,',2,1] < 0', self.neighlist[x,y,2,1] < 0
 					# this coordinate must not be less than zero
 					self.neighlist[x,y,2,1] += self.N
 					
 				if self.neighlist[x,y,3,1] >= self.N:
-					print 'self.neighlist[',x,y,',3,1] >= self.N', self.neighlist[x,y,3,1] >= self.N
 					# this coordinate should always be less than N
 					self.neighlist[x,y,3,1] -= self.N
 					
-
 		return None
 
 
