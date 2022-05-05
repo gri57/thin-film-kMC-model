@@ -12,7 +12,7 @@ Na = 0.
 Nd = 0.
 # Number of sites along an edge of the square simple cubic lattice
 # 	N^2 is the total number of atoms
-N = 20
+N = 12
 # Array with the number of atoms at every site
 # start with a perfect surface
 surfacemat = np.ones( (N,N), 'int' )
@@ -25,9 +25,11 @@ neighsmat = 5.*np.ones( (N,N), 'int' )
 neighstally = np.zeros( 5, 'int' )
 neighstally[4] = N*N # perfect surface - all atoms have 5 neighbours
 
-# add one atom to the surface so that there will be at least two sites with 1 neighbour
+# add one atom to the surface so that there will be at some sites with 1 neighbour
 surfacemat, neighsmat, neighstally = adsorption_event( N, 0, 3, surfacemat, neighsmat, neighstally )
 surfacemat, neighsmat, neighstally = adsorption_event( N, 1, 2, surfacemat, neighsmat, neighstally )
+surfacemat, neighsmat, neighstally = adsorption_event( N, 1, 4, surfacemat, neighsmat, neighstally )
+surfacemat, neighsmat, neighstally = adsorption_event( N, 1, 6, surfacemat, neighsmat, neighstally )
 
 # add two atoms so that there will be at least two atoms with 2 neighbours
 surfacemat, neighsmat, neighstally = adsorption_event( N, 3, 4, surfacemat, neighsmat, neighstally )

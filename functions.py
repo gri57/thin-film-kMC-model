@@ -347,7 +347,7 @@ def FFSSparams():
 	# Make an array for the independent variable (dimensionless distance)
 	eta_0 = 0.
 	eta_inf = 6.0
-	d_eta = 0.05
+	d_eta = 0.1
 	eta = np.arange( eta_0, eta_inf, d_eta )
 	
 	return rho_b, rho, f0, f_eta_0, eta, eta_0, d_eta, eta_inf
