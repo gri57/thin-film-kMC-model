@@ -36,6 +36,8 @@ class ThinFilm(object):
 		Wa:				(float) total adsorption rate
 		Wd: 			(float) total desorption rate
 		Wm:				(float) total migration rate
+		xloc:			(int) x coordinate of the atom on which to perform adsorption, desorption and neighbour update (update_neighs_pbc)
+		yloc:			(int) y coordinate of the atom on which to perform adsorption, desorption and neighbour update (update_neighs_pbc)
 		
 		OTHER parameters are explained when they are defined (below).
 		
@@ -61,6 +63,8 @@ class ThinFilm(object):
 		self.Wa = 0.
 		self.Wd = 0.
 		self.Wm = 0.
+		self.xloc = 0
+		self.yloc = 0
 		
 		self.R = 1.987 # cal/K.mol - gas constant (used in nu0, Wa requires 8.314)
 		self.T = 800. # Kelvin
@@ -91,81 +95,44 @@ class ThinFilm(object):
 		self.Wa_prefactor = self.S0 * self.P * np.power(2. * np.pi * self.m * 8.314 * self.T, -0.5) * np.power(self.Ctot, -1.) * np.power(self.N, 2.)
 
 
-	def adsorption_event(self, x, y):
+	def adsorption_event(self):
 		
-		""" Perform an adsorption event and call the function that does a neighbour update. 
-		
-		x:	(int) x coordinate of the atom on the thin film surface
-		y:	(int) y coordinate of the atom on the thin film surface
-		
-		"""
+		""" Perform an adsorption event and call the function that does a neighbour update. """
 		
 		# Store the original height (for update_neighs_pbc method)
-		self.prevh = self.surfacemat[x,y]
+		self.prevh = self.surfacemat[self.xloc,self.yloc]
 		
 		# Add an atom to the surface at the specified site.
 		# surfacemat will be updated and stored
-		self.surfacemat[x,y] += 1
+		self.surfacemat[self.xloc,self.yloc] += 1
 		
 		# Update the number of neighbours at each site affected by adsorption, use periodic boundaries.
-		self.update_neighs_pbc( x, y )
+		self.update_neighs_pbc()
 		
 		return None
 
 	
-	def desorption_event( self, x, y ):
+	def desorption_event(self):
 		
-		""" Perform a desorption event and call the function that does a neighbour update. 
-		
-		x:	(int) x coordinate of the atom on the thin film surface
-		y:	(int) y coordinate of the atom on the thin film surface
-		
-		"""
+		""" Perform a desorption event and call the function that does a neighbour update. """
 		
 		# Store the original height (for update_neighs_pbc method)
-		self.prevh = self.surfacemat[x,y]
+		self.prevh = self.surfacemat[self.xloc,self.yloc]
 		
 		# Remove an atom from the surface at the specified site.
 		# surfacemat will be updated and stored
-		self.surfacemat[x,y] -= 1
+		self.surfacemat[self.xloc,self.yloc] -= 1
 		
 		# Update the number of neighbours at each site affected by desorption, use periodic boundaries.
-		self.update_neighs_pbc( x, y )
+		self.update_neighs_pbc()
 		
 		return None
 
 
-	def migration_event( self, xi, yi, xf, yf ):
-		
-		""" Perform a migration event (which is a desorption event followed by adsorption). 
-		The functions for desorption and adsorption each call the neighbour update function 
-		(which uses periodic boundary conditions).
-		
-		xi:	(int) initial x coordinate of the atom
-		yi:	(int) initial y coordinate of the atom
-		xf:	(int) final x coordinate of the atom
-		yf:	(int) final y coordinate of the atom
-		
-		"""
-		
-		# Desorption event.
-		self.desorption_event( xi, yi )
-		
-		# Adsorption event.
-		self.adsorption_event( xf, yf )
-		
-		return None
-
-
-	def update_neighs_pbc( self, x, y ):
+	def update_neighs_pbc(self):
 		
 		""" Do a local update of neighbours for atoms affected by adsorption, desorption, and 
-		migration events. Use periodic boundary conditions.
-		
-		x:			(int) x coordinate of the atom on the thin film surface
-		y:			(int) y coordinate of the atom on the thin film surface
-		
-		"""
+		migration events. Use periodic boundary conditions. """
 		
 		''' Update neighbour count at (x,y) site. '''
 		
@@ -178,24 +145,24 @@ class ThinFilm(object):
 			# 5 is the maximum number of nearest neighbours an atom can have because the atom 
 			# 	directly below is also its nearest neighbour.
 			
-			if self.surfacemat[x,y] <= self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ]:
+			if self.surfacemat[self.xloc,self.yloc] <= self.surfacemat[ self.neighlist[self.xloc,self.yloc,i,0], self.neighlist[self.xloc,self.yloc,i,1] ]:
 				# For any current site, a neighbouring site contributes to neighbour count if 
 				# height of the current site is <= height of the neighbouring site.
 				siteneighs += 1
 				
 			''' Update neighbour count at those sites that were affected by the adsorption/desorption event. '''
 			
-			if self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= self.surfacemat[x,y] and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > self.prevh:
+			if self.surfacemat[ self.neighlist[self.xloc,self.yloc,i,0], self.neighlist[self.xloc,self.yloc,i,1] ] <= self.surfacemat[self.xloc,self.yloc] and self.surfacemat[ self.neighlist[self.xloc,self.yloc,i,0], self.neighlist[self.xloc,self.yloc,i,1] ] > self.prevh:
 				# current site now is but was not a neighbour of the other site 
-				self.neighsmat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] += 1
+				self.neighsmat[ self.neighlist[self.xloc,self.yloc,i,0], self.neighlist[self.xloc,self.yloc,i,1] ] += 1
 				
-			elif self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > self.surfacemat[x,y] and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= self.prevh:
+			elif self.surfacemat[ self.neighlist[self.xloc,self.yloc,i,0], self.neighlist[self.xloc,self.yloc,i,1] ] > self.surfacemat[self.xloc,self.yloc] and self.surfacemat[ self.neighlist[self.xloc,self.yloc,i,0], self.neighlist[self.xloc,self.yloc,i,1] ] <= self.prevh:
 				# current site is not but was a neighbour of the other site 
-				self.neighsmat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] -= 1
+				self.neighsmat[ self.neighlist[self.xloc,self.yloc,i,0], self.neighlist[self.xloc,self.yloc,i,1] ] -= 1
 				
 		# Update the number of neighbours at the site of interest (x,y)
 		# neighsmat will be updated and stored, accessible to other methods and functions
-		self.neighsmat[x,y] = siteneighs
+		self.neighsmat[self.xloc,self.yloc] = siteneighs
 		
 		# Update the tally of neighbours
 		# neighstally will be updated and stored, accessible to other methods and functions
@@ -601,7 +568,10 @@ def run_sos_KMC(thinfilm, gaslayer):
 		''' perform adsorption '''
 		
 		# choose a site randomly (pick a random index for the arrays, Python indexing starts at zero)
-		thinfilm.adsorption_event( np.random.random_integers(0, thinfilm.N-1), np.random.random_integers(0, thinfilm.N-1) )
+		thinfilm.xloc = np.random.random_integers(0, thinfilm.N-1)
+		thinfilm.yloc = np.random.random_integers(0, thinfilm.N-1)
+		
+		thinfilm.adsorption_event()
 		
 		# update the count of adsorbed atoms
 		thinfilm.Na += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
@@ -612,7 +582,10 @@ def run_sos_KMC(thinfilm, gaslayer):
 		''' perform desorption '''
 		
 		# choose a site randomly (pick a random index for the arrays, Python indexing starts at zero)
-		thinfilm.desorption_event( np.random.random_integers(0, thinfilm.N-1), np.random.random_integers(0, thinfilm.N-1) )
+		thinfilm.xloc = np.random.random_integers(0, thinfilm.N-1)
+		thinfilm.yloc = np.random.random_integers(0, thinfilm.N-1)
+		
+		thinfilm.desorption_event( )
 		
 		# update the count of desorbed atoms
 		thinfilm.Nd += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
@@ -620,7 +593,7 @@ def run_sos_KMC(thinfilm, gaslayer):
 				
 	else:
 		
-		''' perform migration '''
+		''' perform migration (desorption followed by adsorption) '''
 		
 		# choose one of the 5 "classes" (atoms with 1 neighbour, 2, 3, 4 or 5)
 		
@@ -649,15 +622,25 @@ def run_sos_KMC(thinfilm, gaslayer):
 		# choose one of those atoms at random
 		chosenatom = np.random.random_integers( 0, numofatoms-1 )
 		
-		# get the atom's x and y coordinates
-		xi = indecesofatoms[0][chosenatom]
-		yi = indecesofatoms[1][chosenatom]
+		# store the atom's initial x and y coordinates
+		thinfilm.xloc = indecesofatoms[0][chosenatom]
+		thinfilm.yloc = indecesofatoms[1][chosenatom]
+		
+		# perform desorption 
+		thinfilm.desorption_event()
 		
 		# randomly find the location where the atom selected above will migrate
 		chosenneighbour = np.random.random_integers( 0, 3 )
-
-		# Perform the migration event
-		thinfilm.migration_event(xi, yi, thinfilm.neighlist[xi,yi,chosenneighbour,0], thinfilm.neighlist[xi,yi,chosenneighbour,1])
+		
+		# this temporary variable is absolutely necessary to correctly update thinfilm.yloc (see below)
+		xi_temp = thinfilm.xloc 
+		
+		# store the atom's final x and y coordinates
+		thinfilm.xloc = thinfilm.neighlist[thinfilm.xloc,thinfilm.yloc,chosenneighbour,0]
+		thinfilm.yloc = thinfilm.neighlist[xi_temp,thinfilm.yloc,chosenneighbour,1]
+		
+		# perform adsorption
+		thinfilm.adsorption_event()
 		
 		# update the count of migrated atoms
 		thinfilm.Nm += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
