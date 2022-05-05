@@ -331,6 +331,10 @@ class GasLayer(object):
 		self.df_deta_0 = 0. # value of the first derivative of the stream function w.r.t. eta at the eta = 0 boundary
 		self.df_deta_inf = 1.0 # value of the first derivative of the stream function w.r.t. eta at the eta = inf boundary
 
+		# Calculate these to be able to use multiplication instead of division (the former is faster) when solving the mass transfer equation using Method of Lines
+		self.d_eta_inv = np.power( self.d_eta, -1. )
+		self.d_eta2_inv = np.power( self.d_eta, -2. )
+	
 
 	def calcFluidFlowSS(self, df_deta_2_0):
 		
@@ -495,7 +499,7 @@ def MassTransfMoL( x, params ):
 
 	# Calculate the time derivative of eta at the eta = 0 node.
 	# forward difference approximation
-	derivs[0] = gaslayer.Sc_inv * d_eta2_inv * ( x[2] - 2.*x[1] + x[0] ) + gaslayer.f[0] * d_eta_inv * ( x[1] - x[0] )
+	derivs[0] = gaslayer.Sc_inv * d_eta2_inv * ( x[2] - 2.*x[1] + x[0] ) + gaslayer.f[0] * bc0
 	
 	# Calculate the time derivative of eta at each internal node.
 	# central difference approximation
@@ -505,11 +509,63 @@ def MassTransfMoL( x, params ):
 	
 	# The time derivative of eta at the eta = inf node is always zero because the boundary condition is x( eta=inf ) = X.
 	derivs[-1] = 0.0
-	print 'Time derivatives are :', derivs
+	
+	#print 'Time derivatives are :', derivs
+	
 	return derivs
 
 
-def calc_xgrow_PDE( thinfilm, gaslayer, dtcouple ):
+def MassTransfMoL2( x, timepoint, params ):
+	
+	"""
+	('ndarray', 'float', 'list') -> 'ndarray'
+	
+	Numerical integration of the mass transfer equation - equation 3-3 of Shabnam's PhD 
+	thesis - is done using the Method of Lines.
+	
+	The mass transfer equation  has been transformed from a PDE to ODEs at multiple eta 
+	nodes. Each ODE is the time derivative of the mole fraction at a particular spatial node.
+	
+	x: 			mole fraction values at all spatial nodes (all eta values)
+	timepoint:	time point at which derivatives are computed (not used in calculations explicitly)
+	derivs: 	temporal derivatives of the mole fraction profile
+	
+	Dimensions of x are the same as the derivs variable that is returned by this
+	function, and the gaslayer.f variable that holds the values of the stream function.
+	
+	"""
+	
+	# Unpack params
+	bc0, gaslayer = params
+	# bc0: 			updated boundary condition for di_x/d_eta (spatial derivative) at eta = 0
+	# gaslayer: 	a GasLayer object (an instance of the GasLayer class)
+	
+	# Preallocate the variable for the storage of time derivatives at all nodes
+	derivs = x.copy() * 0.0
+
+	# Calculate x at eta = 0 using the reverse of forward difference approximation of the derivative
+	# Use the boundary condition (spatial derivative at eta = 0) to arrive at the value of the dependent variable (x) at eta = 0
+	x[0] = x[1] - gaslayer.d_eta * bc0
+
+	# Calculate the time derivative of eta at the eta = 0 node.
+	# forward difference approximation
+	derivs[0] = gaslayer.Sc_inv * gaslayer.d_eta2_inv * ( x[2] - 2.*x[1] + x[0] ) + gaslayer.f[0] * bc0
+	
+	# Calculate the time derivative of eta at each internal node.
+	# central difference approximation
+	# Using array math instead of a for loop for faster calculations. NumPy does not include the last value in the 
+	# indeces used below: [1:-1] will include values from index 1 to index -2 (second last), not -1 (last).
+	derivs[1:-1] = gaslayer.Sc_inv * gaslayer.d_eta2_inv * ( x[0:-2] - 2.*x[1:-1] + x[2:] ) + gaslayer.f[1:-1] * 2. * gaslayer.d_eta_inv * ( x[2:] - x[0:-2] )
+	
+	# The time derivative of eta at the eta = inf node is always zero because the boundary condition is x( eta=inf ) = X.
+	derivs[-1] = 0.0
+	
+	#print 'Time derivatives are :', derivs
+	
+	return derivs
+
+
+def calc_xgrow_PDE( thinfilm, gaslayer, observables ):
 	
 	''' 
 	Calculate the precursor mole fraction on the surface of the thin film, to be used by KMC. 
@@ -520,19 +576,28 @@ def calc_xgrow_PDE( thinfilm, gaslayer, dtcouple ):
 	'''
 	
 	# The difference between adsorption and desorption rates (equation 3-20 of Shabnam's PhD thesis)
-	Ra_Rd = ( thinfilm.Na - thinfilm.Nd ) * np.power( 2. * gaslayer.a * np.power(thinfilm.N, 2.) * dtcouple, -1. )
-	#Ra_Rd = ( thinfilm.Na - thinfilm.Nd ) * np.power( np.power(thinfilm.N, 2.) * dtcouple, -1. )
+	Ra_Rd = ( thinfilm.Na - thinfilm.Nd ) * np.power( 2. * gaslayer.a * np.power(thinfilm.N, 2.) * observables.coupling_time, -1. )
 
 	# Boundary condition (di_x/di_eta value) at eta = 0 (equation 3-6 of Shabnam's PhD thesis)
 	bc0 = gaslayer.RaRd_prefactor * Ra_Rd
 
-	#print gaslayer.Sc*np.power(2.*gaslayer.a*gaslayer.mu_b_rho_b, -.5 )
 	print 'bc0 = ', bc0
 
-	#print 'x profile and derivatives are ', xdx_values
+	# Use the IVP ODE solver imported from scipy.integrate
+	x_dxdeta_values = odeint( MassTransfMoL2, gaslayer.xprofile, [observables.current_time, observables.current_time+observables.coupling_time], args=( [bc0, gaslayer] ,)  )
+	
+	print ''
+	print 'x_dxdeta_values.shape ', x_dxdeta_values.shape
+	print 'mole fraction profile values: ', x_dxdeta_values[0,:]
+	print ''
+	print 'mole fraction time derivative values: ', x_dxdeta_values[1,:]
+	print ''
+	print ''
+	print ''
+	
 	# update and store the mole fraction profile within the gas boundary layer above the thin film
 	time_derivs_x_MoL = MassTransfMoL( gaslayer.xprofile, [bc0, gaslayer] ) 
-	gaslayer.xprofile += time_derivs_x_MoL * dtcouple
+	gaslayer.xprofile += time_derivs_x_MoL * observables.coupling_time
 	
 	# update and store the value of the mole fraction on the surface of the thin film
 	gaslayer.xgrow = gaslayer.xprofile[0]

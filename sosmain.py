@@ -32,11 +32,10 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 		print 'Na, Nd, Nm = ', thinfilm.Na, ',', thinfilm.Nd, ',', thinfilm.Nd
 		print 'Wa, Wd, Wm = ', thinfilm.Wa, ',', thinfilm.Wd, ',', thinfilm.Wm
 		
-		calc_xgrow_PDE( thinfilm, gaslayer, observables.coupling_time )
+		calc_xgrow_PDE( thinfilm, gaslayer, observables )
 		print 'x_grow = ', gaslayer.xgrow
 		if gaslayer.xgrow < 0:
 			raise ValueError('Precursor mole fraction on film surface (xgrow) is negative.')
-		#print 'mole fraction profile: ', gaslayer.xprofile
 		
 		observables.update_current_time()
 		observables.calculate_observables(thinfilm.surfacemat)
