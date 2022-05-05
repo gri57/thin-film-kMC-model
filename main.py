@@ -12,20 +12,42 @@ Na = 0.
 Nd = 0.
 # Number of sites along an edge of the square simple cubic lattice
 # 	N^2 is the total number of atoms
-N = 10
+N = 20
 # Array with the number of atoms at every site
 # start with a perfect surface
 surfacemat = np.ones( (N,N), 'int' )
-surfacemat[0][3] = 2
+
 # Array with the number of neighbours of each atom at every site 
 # start with a perfect surface
 neighsmat = 5.*np.ones( (N,N), 'int' )
-neighsmat[0][3] = 1
+
 # Array that tells how many atoms in total there are with 1, 2, 3, 4 and 5 neighbours
 neighstally = np.zeros( 5, 'int' )
 neighstally[4] = N*N # perfect surface - all atoms have 5 neighbours
-neighstally[4] -= 1
-neighstally[0] = 1
+
+# add one atom to the surface so that there will be at least two sites with 1 neighbour
+surfacemat, neighsmat, neighstally = adsorption_event( N, 0, 3, surfacemat, neighsmat, neighstally )
+surfacemat, neighsmat, neighstally = adsorption_event( N, 1, 2, surfacemat, neighsmat, neighstally )
+
+# add two atoms so that there will be at least two atoms with 2 neighbours
+surfacemat, neighsmat, neighstally = adsorption_event( N, 3, 4, surfacemat, neighsmat, neighstally )
+surfacemat, neighsmat, neighstally = adsorption_event( N, 3, 5, surfacemat, neighsmat, neighstally )
+
+# add some atoms so that there are at least two atoms with 3 neighbours
+surfacemat, neighsmat, neighstally = adsorption_event( N, 7, 8, surfacemat, neighsmat, neighstally )
+surfacemat, neighsmat, neighstally = adsorption_event( N, 8, 8, surfacemat, neighsmat, neighstally )
+surfacemat, neighsmat, neighstally = adsorption_event( N, 7, 7, surfacemat, neighsmat, neighstally )
+
+surfacemat, neighsmat, neighstally = adsorption_event( N, 10, 3, surfacemat, neighsmat, neighstally )
+surfacemat, neighsmat, neighstally = adsorption_event( N, 10, 2, surfacemat, neighsmat, neighstally )
+surfacemat, neighsmat, neighstally = adsorption_event( N, 11, 2, surfacemat, neighsmat, neighstally )
+
+# remove an atom to have some atoms with 4 neighbours
+surfacemat, neighsmat, neighstally = desorption_event( N, 10, 10, surfacemat, neighsmat, neighstally )
+
+print surfacemat
+print neighsmat
+print neighstally
 
 # Bulk mole fraction
 X = 2e-6
@@ -42,7 +64,7 @@ Tcurr = 0.0
 # Output data
 rough = np.zeros( int(Ttot/dtcouple), 'float' )
 thick = np.zeros( int(Ttot/dtcouple), 'float' )
-growr = np.zeros( int(Ttot/dtcouple), 'float' )
+growr = 123.45*np.ones( int(Ttot/dtcouple), 'float' )
 
 # Find the value of the 2nd derivative of the dependent variable in the Fluid Flow conservation equation at the first boundary
 correct2ndderivative = fsolve( residualFluidFlowSS, 1.2 )

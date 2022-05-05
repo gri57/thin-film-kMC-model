@@ -283,7 +283,7 @@ def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm
 		
 		# find out the x and y indeces of atoms that have the specified number of neighbours
 		indecesofatoms = np.where( neighsmat == neighclass )
-		
+		print "Neighclass",neighclass #diagnostics
 		# find out how many atoms have the specified number of neighbours
 		numofatoms = len( indecesofatoms[0] )
 		
@@ -347,7 +347,7 @@ def FFSSparams():
 	# Make an array for the independent variable (dimensionless distance)
 	eta_0 = 0.
 	eta_inf = 6.0
-	d_eta = 0.5
+	d_eta = 0.05
 	eta = np.arange( eta_0, eta_inf, d_eta )
 	
 	return rho_b, rho, f0, f_eta_0, eta, eta_0, d_eta, eta_inf
