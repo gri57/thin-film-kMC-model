@@ -313,7 +313,6 @@ class GasLayer(object):
 		self.eta = np.arange( 0., self.eta_inf+self.d_eta, self.d_eta ) # the length of xprofile, eta and f arrays must be the same
 		
 		self.f = np.zeros( int( self.eta_inf/self.d_eta )+1, 'float' ) 
-		
 
 		# Select parameter values from Table 3-1 of Shabnam's PhD thesis
 		self.a = 5.0 # 1/s
@@ -324,17 +323,25 @@ class GasLayer(object):
 		
 		self.Sc_inv = 1./self.Sc
 		
-		self.RaRd_prefactor = self.Sc*np.power( 2. * self.a * self.mu_b_rho_b, -0.5 ) # for equation 3-6
+		self.RaRd_prefactor = self.Sc*np.power( 2. * self.a * self.mu_b_rho_b, -0.5 ) # for equation 3-6 in calc_xgrow_PDE() function
 		
 		# Boundary conditions for the stream function (equation 3-1) 
 		self.f0 = 0. # value of the stream function at the eta = 0 boundary
 		self.df_deta_0 = 0. # value of the first derivative of the stream function w.r.t. eta at the eta = 0 boundary
 		self.df_deta_inf = 1.0 # value of the first derivative of the stream function w.r.t. eta at the eta = inf boundary
 
-		# Calculate these to be able to use multiplication instead of division (the former is faster) when solving the mass transfer equation using Method of Lines
+		# Calculate these to be able to use multiplication instead of division (the former is faster) when solving 
+		# the mass transfer equation using Method of Lines (MassTransfMoL function).
 		self.d_eta_inv = np.power( self.d_eta, -1. )
 		self.d_eta2_inv = np.power( self.d_eta, -2. )
-	
+		self.Sc_inv_d_eta2_inv = self.Sc_inv * self.d_eta2_inv
+		
+		# optimization for MassTransfMoL function - the value is calculated in sosmain.py
+		self.f_2_d_eta_inv = self.f[1:-1].copy() 
+
+		# optimization for calc_xgrow_PDE function - the value is be calculated in sosmain.py
+		self.eqn_3_20_denominator = 0.0 
+
 
 	def calcFluidFlowSS(self, df_deta_2_0):
 		
@@ -419,6 +426,9 @@ class Observables( object ):
 		
 		self.Nsq_inv = np.power( self.N, -2. )
 		
+		# optimization for calculate_observables function
+		self.Nsq_inv_coupling_time_inv = self.Nsq_inv / self.coupling_time 
+		
 		self.current_time = 0.0 # initial value, updated during simulation
 		
 		self.roughness = np.zeros(int(round(self.total_time / self.coupling_time)) + 1, 'float') 
@@ -429,8 +439,10 @@ class Observables( object ):
 		
 		self.surfacemat_previous = np.ones( (self.N,self.N), 'int' ) # @grigoriy - this is a bit redundant with ThinFilm
 		
+		self.total_time_minus_1 = self.total_time - self.coupling_time
 		
-	def calculate_observables(self, surfacemat):
+		
+	def calculate_observables(self, surfacemat, counter):
 		
 		''' Calculate roughness, growth rate and thickness '''
 		
@@ -438,31 +450,22 @@ class Observables( object ):
 		# find out the difference between current location and row immediately below
 		# current row and row immediately above yields the same result, hence multiplication by 2
 		# use "round" in conjunction with "int" (instead of only using int) to ensure that integer indeces are not skipped by "int"
-		self.roughness[int(round(self.current_time / self.coupling_time))] += 2.*np.sum(np.abs( surfacemat[1:,:] - surfacemat[0:-1,:] )) + 2.*np.sum(np.abs( surfacemat[0,:] - surfacemat[-1,:] ))
+		self.roughness[counter] += 2.*np.sum(np.abs(surfacemat[1:,:] - surfacemat[0:-1,:])) + 2.*np.sum(np.abs(surfacemat[0,:] - surfacemat[-1,:]))
 		# the difference between the current column and column immediately before is the same as between current and immediately after
-		self.roughness[int(round(self.current_time / self.coupling_time))] += 2.*np.sum(np.abs( surfacemat[:,1:] - surfacemat[:,0:-1] )) + 2.*np.sum(np.abs( surfacemat[:,-1] - surfacemat[:,0] ))
-		self.roughness[int(round(self.current_time / self.coupling_time))] *= self.Nsq_inv
+		self.roughness[counter] += 2.*np.sum(np.abs(surfacemat[:,1:] - surfacemat[:,0:-1])) + 2.*np.sum(np.abs(surfacemat[:,-1] - surfacemat[:,0]))
+		self.roughness[counter] *= self.Nsq_inv
 		# @grigoriy - the addition of 1 in equation 3-17 is handled at the end of sosmain.py (avoid redundant calculations)
 		
 		# thickness - equation 3-18
-		self.thickness[int(round(self.current_time / self.coupling_time))] = np.sum( surfacemat ) * self.Nsq_inv
+		self.thickness[counter] = np.sum(surfacemat) * self.Nsq_inv
 		
 		# growth rate - equation 3-19
-		self.growthrate[int(round(self.current_time / self.coupling_time))] = np.sum( surfacemat - self.surfacemat_previous ) * self.Nsq_inv / self.coupling_time
+		self.growthrate[counter] = np.sum(surfacemat - self.surfacemat_previous) * self.Nsq_inv_coupling_time_inv
 		
 		# store the matrix with heights at each site for the next growth rate calculation
 		self.surfacemat_previous = surfacemat.copy()
 
 		return None
-		
-	
-	def update_current_time(self):
-		self.current_time += self.coupling_time
-		return self.current_time
-		
-		
-	def get_current_time(self):
-		return self.current_time
 
 
 
@@ -493,6 +496,8 @@ def MassTransfMoL( x, timepoint, params ):
 	
 	# Preallocate the variable for the storage of time derivatives at all nodes
 	derivs = x.copy() * 0.0
+	#	Multiplying by 0.0 is important since derivs[-1] must always be 0.0 (see 
+	# 	the note at the end of this function).
 
 	# Calculate x at eta = 0 using the reverse of forward difference approximation of the derivative
 	# Use the boundary condition (spatial derivative at eta = 0) to arrive at the value of the dependent variable (x) at eta = 0
@@ -500,16 +505,17 @@ def MassTransfMoL( x, timepoint, params ):
 
 	# Calculate the time derivative of eta at the eta = 0 node.
 	# forward difference approximation
-	derivs[0] = gaslayer.Sc_inv * gaslayer.d_eta2_inv * ( x[2] - 2.*x[1] + x[0] ) + gaslayer.f[0] * bc0
+	derivs[0] = gaslayer.Sc_inv_d_eta2_inv * ( x[2] - 2.*x[1] + x[0] ) + gaslayer.f[0] * bc0
 	
 	# Calculate the time derivative of eta at each internal node.
 	# central difference approximation
 	# Using array math instead of a for loop for faster calculations. NumPy does not include the last value in the 
 	# indeces used below: [1:-1] will include values from index 1 to index -2 (second last), not -1 (last).
-	derivs[1:-1] = gaslayer.Sc_inv * gaslayer.d_eta2_inv * ( x[0:-2] - 2.*x[1:-1] + x[2:] ) + gaslayer.f[1:-1] * 2. * gaslayer.d_eta_inv * ( x[2:] - x[0:-2] )
+	derivs[1:-1] = gaslayer.Sc_inv_d_eta2_inv * ( x[0:-2] - 2.*x[1:-1] + x[2:] ) + gaslayer.f_2_d_eta_inv * ( x[2:] - x[0:-2] )
 	
-	# The time derivative of eta at the eta = inf node is always zero because the boundary condition is x( eta=inf ) = X.
-	derivs[-1] = 0.0
+	''' The time derivative of eta at the eta = inf node is always zero because 
+	the boundary condition is x( eta=inf ) = X. Hence, do nothing with derivs[-1] 
+	as it is already 0.0 from when "derivs" variable was created. '''
 		
 	return derivs
 
@@ -525,7 +531,7 @@ def calc_xgrow_PDE( thinfilm, gaslayer, observables ):
 	'''
 	
 	# The difference between adsorption and desorption rates (equation 3-20 of Shabnam's PhD thesis)
-	Ra_Rd = ( thinfilm.Na - thinfilm.Nd ) * np.power( 2. * gaslayer.a * np.power(thinfilm.N, 2.) * observables.coupling_time, -1. )
+	Ra_Rd = ( thinfilm.Na - thinfilm.Nd ) * gaslayer.eqn_3_20_denominator
 
 	# Boundary condition (di_x/di_eta value) at eta = 0 (equation 3-6 of Shabnam's PhD thesis)
 	bc0 = gaslayer.RaRd_prefactor * Ra_Rd
@@ -629,7 +635,8 @@ def run_sos_KMC(thinfilm, gaslayer):
 		xi = indecesofatoms[0][chosenatom]
 		yi = indecesofatoms[1][chosenatom]
 		
-		# randomly find the location xf,yf where the atom selected above will migrate to by adding/subtracting 1 to xi/yi
+		''' randomly find the location xf,yf where the atom selected above 
+		will migrate to by adding/subtracting 1 to xi/yi '''
 		
 		chosenneighbour = np.random.random_integers( 0, 3 )
 		
