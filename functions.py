@@ -15,7 +15,7 @@ def adsorption_event( N, x, y, surfacemat, neighsmat, neighstally ):
 	Perform an adsorption event and call the function that does a 
 	neighbour update. 
 	"""
-	
+	print 'adsorption'
 	# Add an atom to the surface at the specified site.
 	surfacemat[x,y] += 1
 	
@@ -329,7 +329,7 @@ def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm
 	# 1e-53 is practically zero, but prevents np.log(sigma) from giving "-inf" for an answer
 	sigma = np.random.uniform( low=1e-53, high=1.0 )
 	dtkmc += -np.log( sigma ) * Wtotal_inv    # equation 3-16
-	
+	print dtkmc
 	return surfacemat, neighsmat, neighstally, dtkmc, Na, Nd
 
 
@@ -412,7 +412,6 @@ def residualFluidFlowSS(f_eta_2_0):
 	# Return the difference between the known value of the first derivative at the second boundary and its estimated value
 	return 1.0 - fvalues[-1,1]
 
-
 #@contract( fvars='list', eta='ndarray', params='list', returns='list' )
 def FluidFlowSS( fvars, eta, params ):
 	
@@ -432,6 +431,63 @@ def FluidFlowSS( fvars, eta, params ):
 	
 	return derivs
 
+#@contract( fvars='list', eta='ndarray', params='list', returns='list' )
+def MassTransfSS( xvars, eta, params ):
+	
+	"""
+	The Mass Transfer equation (eq. 3-3) at steady state.
+	"""
+	print 'currently eta is ',eta
+	
+	x, x_eta = xvars # unpack the dependent variable and its derivative
+	
+	Sc, f = params # unpack the Schmidt number and the dimensionless stream function values
+	
+	# find the f value that corresponds to the current eta value
+	
+	derivs = [ x_eta,
+			   -Sc * f[round(eta/0.1)] * x_eta ]
+			   
+	return derivs
+	
+def residualMassTransfSS( x0 ):
+	
+	"""
+	Solve the Mass Transfer equation (eq. 3-3) at steady state by 
+	recasting the ODE BVP as a root finding problem.
+	
+	x0 - guess of the value of x at eta = 0
+	"""
+	
+	# Bulk mole fraction
+	X = 2e-6
+	
+	# Schmidt number of the precursor
+	Sc = 0.75
+	
+	# Known initial value of the first derivative at eta = 0
+	x_eta_0 = 0
+
+	_, _, _, _, eta, _, _, _ = FFSSparams()
+	
+	print 'all eta values are', eta
+	
+	correct2ndderivative = fsolve( residualFluidFlowSS, 1.2 )
+	fvalues = calcFluidFlowSS( correct2ndderivative )
+	f = fvalues[:,0]
+	
+	print 'all f values are', f
+	
+	xvars = x0, x_eta_0  # pack the initial values of the dependent variable and its derivative
+	
+	params = Sc, f # pack the Schmidt number and the dimensionless stream function values
+	
+	
+	# Use the IVP ODE solver imported from scipy.integrate
+	xvalues = odeint( MassTransfSS, xvars, eta, args=(params,)  )
+	
+	return X - xvalues[-1,0] # boundary condition - x (index 0) is X at eta = inf (index -1)
+	
 
 #@contract( x='ndarray', tao='ndarray', params='list', returns='ndarray' )
 def MassTransfMoL( x, tao, params ):

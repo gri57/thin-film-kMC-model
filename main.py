@@ -12,7 +12,7 @@ Na = 0.
 Nd = 0.
 # Number of sites along an edge of the square simple cubic lattice
 # 	N^2 is the total number of atoms
-N = 12
+N = 30
 # Array with the number of atoms at every site
 # start with a perfect surface
 surfacemat = np.ones( (N,N), 'int' )
@@ -25,28 +25,6 @@ neighsmat = 5.*np.ones( (N,N), 'int' )
 neighstally = np.zeros( 5, 'int' )
 neighstally[4] = N*N # perfect surface - all atoms have 5 neighbours
 
-# add one atom to the surface so that there will be at some sites with 1 neighbour
-surfacemat, neighsmat, neighstally = adsorption_event( N, 0, 3, surfacemat, neighsmat, neighstally )
-surfacemat, neighsmat, neighstally = adsorption_event( N, 1, 2, surfacemat, neighsmat, neighstally )
-surfacemat, neighsmat, neighstally = adsorption_event( N, 1, 4, surfacemat, neighsmat, neighstally )
-surfacemat, neighsmat, neighstally = adsorption_event( N, 1, 6, surfacemat, neighsmat, neighstally )
-
-# add two atoms so that there will be at least two atoms with 2 neighbours
-surfacemat, neighsmat, neighstally = adsorption_event( N, 3, 4, surfacemat, neighsmat, neighstally )
-surfacemat, neighsmat, neighstally = adsorption_event( N, 3, 5, surfacemat, neighsmat, neighstally )
-
-# add some atoms so that there are at least two atoms with 3 neighbours
-surfacemat, neighsmat, neighstally = adsorption_event( N, 7, 8, surfacemat, neighsmat, neighstally )
-surfacemat, neighsmat, neighstally = adsorption_event( N, 8, 8, surfacemat, neighsmat, neighstally )
-surfacemat, neighsmat, neighstally = adsorption_event( N, 7, 7, surfacemat, neighsmat, neighstally )
-
-surfacemat, neighsmat, neighstally = adsorption_event( N, 10, 3, surfacemat, neighsmat, neighstally )
-surfacemat, neighsmat, neighstally = adsorption_event( N, 10, 2, surfacemat, neighsmat, neighstally )
-surfacemat, neighsmat, neighstally = adsorption_event( N, 11, 2, surfacemat, neighsmat, neighstally )
-
-# remove an atom to have some atoms with 4 neighbours
-surfacemat, neighsmat, neighstally = desorption_event( N, 10, 10, surfacemat, neighsmat, neighstally )
-
 print surfacemat
 print neighsmat
 print neighstally
@@ -55,7 +33,7 @@ print neighstally
 X = 2e-6
 
 # Coupling time for the PDE gas phase and KMC solid-on-solid models
-dtcouple = 0.1
+dtcouple = 0.01
 # initialize KMC timestep (updated by the runSolidOnSolidKMC() function)
 dtkmc = 0.0
 # Total simulation time
@@ -74,12 +52,20 @@ correct2ndderivative = fsolve( residualFluidFlowSS, 1.2 )
 # get the values of the dependent variable and its first and second derivatives 
 fvalues = calcFluidFlowSS( correct2ndderivative )
 
-# Boundary condition for the mole fraction of the precursor (x) at infinite eta ( x(eta = inf) = X )
-xinit = np.zeros( max(fvalues.shape), 'float' )
-xinit[-1] = X
+# Find the initial surface mole fraction by solving equation 3-3 at steady state
+#surfacemolfrac = fsolve( residualMassTransfSS, 1e-6 )
+
+# Initial mole fraction of the precursor (x) at all eta 
+xinit = np.ones( max(fvalues.shape), 'float' )
+xinit *= X
 
 # Run initial calculations (gas is provided to the chamber, when it makes its way down to the substrate adsorption/desorption/migration begins)
-Wa, Wd, Wm, xvalues = runGasPhasePDE( N, dtcouple*1e-6, Na, Nd, fvalues, xinit, neighstally )
+Wa, Wd, Wm, xvalues = runGasPhasePDE( N, dtcouple*1e-1, Na, Nd, fvalues, xinit, neighstally )
+xgr = xvalues[0]
+while xgr == 0.0:
+	Wa, Wd, Wm, xvalues = runGasPhasePDE( N, dtcouple*1e-1, Na, Nd, fvalues, xvalues, neighstally )
+	xgr = xvalues[0]
+	print 'initial x grow', xgr
 
 # Index for roughness, growth rate and thickness tracking arrays
 counter = 0
