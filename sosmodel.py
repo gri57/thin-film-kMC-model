@@ -455,6 +455,7 @@ class Observables( object ):
 		self.roughness[counter] += 2.*np.sum(np.abs(surfacemat[:,1:] - surfacemat[:,0:-1])) + 2.*np.sum(np.abs(surfacemat[:,-1] - surfacemat[:,0]))
 		self.roughness[counter] *= self.twoNsq_inv
 		# @grigoriy - the addition of 1 in equation 3-17 is handled at the end of sosmain.py (avoid redundant calculations)
+		# @grigoriy - factors of 2 in the numerator and denominator cancel out, so they are not necessary for calculations (good for clarity though)
 		
 		# thickness - equation 3-18
 		self.thickness[counter] = np.sum(surfacemat) * self.Nsq_inv

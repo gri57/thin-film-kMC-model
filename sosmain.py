@@ -17,7 +17,7 @@ gaslayer.eqn_3_20_denominator = np.power(2. * gaslayer.a * np.power(thinfilm.N, 
  Solve the Fluid Flow conservation equation at steady state (equation 3-1 of Shabnam's PhD thesis).
  fsolve will find the correct value of the 2nd derivative of the stream function at eta = 0 boundary
  in an iterative fashion. On every iteration of fsolve, the stream function values will be updated
- within calcFluidFlowSS and stored as self.f (or gaslayer.f for external access).'''
+ within calcFluidFlowSS and stored as self.f (or gaslayer.f for external access). '''
 
 # The last iteration of fsolve will leave gaslayer.f in the most up-to-date state.
 fsolve(gaslayer.calcFluidFlowSS, 1.2) # provide the initial guess for the 2nd derivative at eta = 0
