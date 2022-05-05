@@ -17,6 +17,8 @@ class ThinFilm(object):
 		surfacemat: 	(ndarray 'int') array with the number of atoms at every site (start 
 						with a perfectly flat surface)
 						
+		neighlist:		(ndarray 'int') array with coordinates of neighbours for each location on the surface
+						
 		neighsmat: 		(ndarray 'int') array with the number of neighbours of each atom at every  
 						site (start with a perfect surface - each atom has 4 closest neighbours in 
 						the layer and 1 underneath)
@@ -167,32 +169,6 @@ class ThinFilm(object):
 		elif callerid == 'des':
 			prevh = currh + 1
 		
-		# Find out the coordinates of the four sites that are neighbours to
-		# the site of interest (x,y). Periodic boundary conditions apply.
-		neighcoords = np.zeros( (4,2), 'int' )
-		neighcoords[0,...] = [x-1, y]
-		neighcoords[1,...] = [x+1, y]
-		neighcoords[2,...] = [x, y-1]
-		neighcoords[3,...] = [x, y+1]
-		
-		''' Implement periodic boundary conditions. '''
-		
-		if neighcoords[0,0] < 0:
-			# this coordinate must not be less than zero
-			neighcoords[0,0] += self.N
-			
-		if neighcoords[1,0] >= self.N: 
-			# this coordinate should never be greater than N, could be equal to it at most
-			neighcoords[1,0] -= self.N
-			
-		if neighcoords[2,1] < 0:
-			# this coordinate must not be less than zero
-			neighcoords[2,1] += self.N
-			
-		if neighcoords[3,1] >= self.N:
-			# this coordinate should never be greater than N, could be equal to it at most
-			neighcoords[3,1] -= self.N
-		
 		''' Update neighbour count at (x,y) site. '''
 		
 		# minimum possible number of nearest neighbours an atom may have (atom directly below is its only nearest neighbour)
@@ -204,20 +180,20 @@ class ThinFilm(object):
 			# 5 is the maximum number of nearest neighbours an atom can have because the atom 
 			# 	directly below is also its nearest neighbour.
 			
-			if currh <= self.surfacemat[ neighcoords[i,0], neighcoords[i,1] ]:
+			if currh <= self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ]:
 				# For any current site, a neighbouring site contributes to neighbour count if 
 				# height of the current site is <= height of the neighbouring site.
 				siteneighs += 1
 				
 			''' Update neighbour count at those sites that were affected by the adsorption/desorption event. '''
 			
-			if self.surfacemat[ neighcoords[i,0], neighcoords[i,1] ] <= currh and self.surfacemat[ neighcoords[i,0], neighcoords[i,1] ] > prevh:
+			if self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= currh and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > prevh:
 				# current site now is but was not a neighbour of the other site 
-				self.neighsmat[ neighcoords[i,0], neighcoords[i,1] ] += 1
+				self.neighsmat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] += 1
 				
-			elif self.surfacemat[ neighcoords[i,0], neighcoords[i,1] ] > currh and self.surfacemat[ neighcoords[i,0], neighcoords[i,1] ] <= prevh:
+			elif self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > currh and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= prevh:
 				# current site is not but was a neighbour of the other site 
-				self.neighsmat[ neighcoords[i,0], neighcoords[i,1] ] -= 1
+				self.neighsmat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] -= 1
 				
 		# Update the number of neighbours at the site of interest (x,y)
 		# neighsmat will be updated and stored, accessible to other methods and functions

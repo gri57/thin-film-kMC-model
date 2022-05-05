@@ -9,6 +9,9 @@ thinfilm = ThinFilm(100) # the number of sites (N) along an edge of the square f
 gaslayer = GasLayer()
 observables = Observables(thinfilm.N, 0.1, 100.0) # provide N, the coupling time and the total time
 
+# populate the list of neighbours 
+thinfilm.findneighbours_pbc() 
+
 # Optimization for calc_xgrow_PDE function - helps to avoid repeating the same calculations
 gaslayer.eqn_3_20_denominator = np.power(2. * gaslayer.a * np.power(thinfilm.N, 2.) * observables.coupling_time, -1.)
 
