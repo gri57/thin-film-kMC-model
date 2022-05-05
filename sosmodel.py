@@ -439,8 +439,6 @@ class Observables( object ):
 		
 		self.surfacemat_previous = np.ones( (self.N,self.N), 'int' ) # @grigoriy - this is a bit redundant with ThinFilm
 		
-		self.total_time_minus_1 = self.total_time - self.coupling_time
-		
 		
 	def calculate_observables(self, surfacemat, counter):
 		

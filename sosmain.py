@@ -5,12 +5,12 @@ tic()
 
 ''' Create class instances (objects). '''
 
-thinfilm = ThinFilm( 100 ) # the number of sites (N) along an edge of the square film must be provided
+thinfilm = ThinFilm(100) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables( thinfilm.N, 0.1, 100.0 ) # provide N, the coupling time and the total time
+observables = Observables(thinfilm.N, 0.1, 100.0) # provide N, the coupling time and the total time
 
 # Optimization for calc_xgrow_PDE function - helps to avoid repeating the same calculations
-gaslayer.eqn_3_20_denominator = np.power( 2. * gaslayer.a * np.power(thinfilm.N, 2.) * observables.coupling_time, -1. )
+gaslayer.eqn_3_20_denominator = np.power(2. * gaslayer.a * np.power(thinfilm.N, 2.) * observables.coupling_time, -1.)
 
 ''' Calculate the dimensionless stream function.
 
@@ -20,7 +20,7 @@ gaslayer.eqn_3_20_denominator = np.power( 2. * gaslayer.a * np.power(thinfilm.N,
  within calcFluidFlowSS and stored as self.f (or gaslayer.f for external access).'''
 
 # The last iteration of fsolve will leave gaslayer.f in the most up-to-date state.
-fsolve( gaslayer.calcFluidFlowSS, 1.2 ) # provide the initial guess for the 2nd derivative at eta = 0
+fsolve(gaslayer.calcFluidFlowSS, 1.2) # provide the initial guess for the 2nd derivative at eta = 0
 
 # Optimization for MassTransfMoL function - helps to avoid repeating the same calculations
 gaslayer.f_2_d_eta_inv = gaslayer.f[1:-1] * 2. * gaslayer.d_eta_inv
@@ -29,7 +29,7 @@ gaslayer.f_2_d_eta_inv = gaslayer.f[1:-1] * 2. * gaslayer.d_eta_inv
 
 counter = 0 # index for output arrays
 
-while observables.current_time() < observables.total_time_minus_1:
+while observables.current_time < observables.total_time:
 
 	if thinfilm.dtkmc < observables.coupling_time:
 
@@ -39,7 +39,7 @@ while observables.current_time() < observables.total_time_minus_1:
 	else:
 		
 		# update precursor mole fraction on the surface of the thin film
-		calc_xgrow_PDE( thinfilm, gaslayer, observables )
+		calc_xgrow_PDE(thinfilm, gaslayer, observables)
 
 		# update current time
 		observables.current_time += observables.coupling_time
@@ -57,11 +57,9 @@ while observables.current_time() < observables.total_time_minus_1:
 		thinfilm.Nm = 0.
 		
 		''' @grigoriy - for some strange reason if at this point observables.current_time equals to 
-		observables.total_time, Python will still think that current_time is less than total_time
-		and will execute the while loop once more, causing the dimensions of some arrays to be 
-		exceeded. As a result, it was necessary to use observables.total_time_minus_1 instead of 
-		observables.total_time in the while loop condition.
-		'''
+		observables.total_time, Python will still think that current_time is less than total_time. 
+		It is possible that memory locations for current_time and total_time are compared rather than
+		the values themselves. '''
 
 
 observables.roughness += 1. # fulfillment of equation 3-17 (see Observables.calculate_observables method documentation for details)
