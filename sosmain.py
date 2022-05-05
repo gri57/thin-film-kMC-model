@@ -3,9 +3,9 @@ from tictoc import * # import tic() and toc()
 
 ''' Create class instances (objects) '''
 
-thinfilm = ThinFilm( 30 ) # the number of sites (N) along an edge of the square film must be provided
+thinfilm = ThinFilm( 100 ) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables( thinfilm.N, 0.1, 10.0 ) # provide N, the coupling time and the total time
+observables = Observables( thinfilm.N, 0.1, 100.0 ) # provide N, the coupling time and the total time
 
 ''' Calculate the dimensionless stream function '''
 
