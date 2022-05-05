@@ -652,42 +652,11 @@ def run_sos_KMC(thinfilm, gaslayer):
 		xi = indecesofatoms[0][chosenatom]
 		yi = indecesofatoms[1][chosenatom]
 		
-		''' randomly find the location xf,yf where the atom selected above 
-		will migrate to by adding/subtracting 1 to xi/yi '''
-		
+		# randomly find the location where the atom selected above will migrate
 		chosenneighbour = np.random.random_integers( 0, 3 )
-		
-		if chosenneighbour == 0:
-			xf = xi - 1
-			yf = yi
-			# use periodic boundary conditions
-			if xf < 0:
-				xf += thinfilm.N
-				
-		elif chosenneighbour == 1:
-			xf = xi + 1
-			yf = yi
-			# use periodic boundary conditions
-			if xf >= thinfilm.N:
-				xf -= thinfilm.N
-				
-		elif chosenneighbour == 2:
-			xf = xi
-			yf = yi - 1
-			# use periodic boundary conditions
-			if yf < 0:
-				yf += thinfilm.N
-				
-		else:
-			# chosenneighbour is 3
-			xf = xi
-			yf = yi + 1
-			# use periodic boundary conditions
-			if yf >= thinfilm.N:
-				yf -= thinfilm.N
-		
+
 		# Perform the migration event
-		thinfilm.migration_event(xi, yi, xf, yf)
+		thinfilm.migration_event(xi, yi, thinfilm.neighlist[xi,yi,chosenneighbour,0], thinfilm.neighlist[xi,yi,chosenneighbour,1])
 		
 		# update the count of migrated atoms
 		thinfilm.Nm += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
