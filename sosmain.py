@@ -41,7 +41,7 @@ fsolve( gaslayer.calcFluidFlowSS, 1.2 ) # provide the initial guess for the 2nd 
 ''' Conduct the coupled KMC PDE simulation '''
 
 coupling_time = 0.1
-total_time = .5
+total_time = 1.0
 current_time = 0.0
 
 tic()
@@ -55,10 +55,12 @@ while current_time < total_time:
 	else:
 
 		calc_xgrow_PDE( thinfilm, gaslayer, coupling_time )
+		
 		current_time += coupling_time # @grigoriy - should coupling_time or thinfilm.dtkmc be added to current_time?
 		thinfilm.dtkmc = 0. # reset KMC time
 		thinfilm.Na = 0.
 		thinfilm.Nd = 0.
+		
 		print 'Current simulation time:', current_time # progress report
 
 toc()
