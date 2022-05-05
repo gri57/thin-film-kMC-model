@@ -316,6 +316,25 @@ def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm
 	return dtkmc
 
 
+@contract( returns='float,float,float,float,ndarray' )
+def FFSSparams():
+	
+	# Parameter values
+	rho_b = 1.0
+	rho = 1.0
+	
+	# Initial values of the dependent variable and its derivatives
+	f0 = 0.0 # known value of the dependent variable at the first boundary 
+	f_eta_0 = 0.0 # known value of the first derivative at the first boundary
+	
+	# Make an array for the independent variable
+	etaStop = 1.0
+	etaInc = 0.01
+	eta = np.arange( 0., etaStop, etaInc )
+	
+	return rho_b, rho, f0, f_eta_0, eta
+	
+
 #@contract( f_eta_2_0='float', returns='ndarray' )
 def calcFluidFlowSS(f_eta_2_0):
 	
@@ -326,23 +345,16 @@ def calcFluidFlowSS(f_eta_2_0):
 	This page has been helpful: http://www.physics.nyu.edu/pine/pymanual/html/chap9/chap9_scipy.html
 	"""
 	
-	# Parameter values
-	rho_b = 1.0
-	rho = 1.0
-	params = [rho_b, rho] # pack the parameter values for the ODE solver
+	# Get the parameter values and intial values for the Fluid Flow conservation equation at steady state
+	rho_b, rho, f0, f_eta_0, eta = FFSSparams()
 	
-	# Initial values of the dependent variable and its derivatives
-	f0 = 0.0 # known value of the dependent variable at the first boundary 
-	f_eta_0 = 0.0 # known value of the first derivative at the first boundary
+	# Pack the parameter values for the ODE solver
+	params = [rho_b, rho] 
 	
-	fvars = [ f0, f_eta_0, f_eta_2_0 ] # pack the dependent variable values for the ODE solver
+	# Pack the initial values of the dependent variable and its derivatives
+	fvars = [ f0, f_eta_0, f_eta_2_0 ] 
 	
-	# Make an array for the independent variable
-	etaStop = 1.0
-	etaInc = 0.01
-	eta = np.arange( 0., etaStop, etaInc )
-	
-	# Use the ode solver imported from scipy.integrate
+	# Use the IVP ODE solver imported from scipy.integrate
 	fvalues = odeint( FluidFlowSS, fvars, eta, args=(params,)  )
 	
 	# Return the calculated values of the dependent variable and its first two derivatives
@@ -363,23 +375,16 @@ def residualFluidFlowSS(f_eta_2_0):
 	This page has been helpful: http://www.physics.nyu.edu/pine/pymanual/html/chap9/chap9_scipy.html
 	"""
 	
-	# Parameter values
-	rho_b = 1.0
-	rho = 1.0
-	params = [rho_b, rho] # pack the parameter values for the ODE solver
+	# Get the parameter values and intial values for the Fluid Flow conservation equation at steady state
+	rho_b, rho, f0, f_eta_0, eta = FFSSparams()
 	
-	# Initial values of the dependent variable and its derivatives
-	f0 = 0.0 # known value of the dependent variable at the first boundary 
-	f_eta_0 = 0.0 # known value of the first derivative at the first boundary
+	# Pack the parameter values for the ODE solver
+	params = [rho_b, rho] 
 	
-	fvars = [ f0, f_eta_0, f_eta_2_0 ] # pack the dependent variable values for the ODE solver
+	# Pack the initial values of the dependent variable and its derivatives
+	fvars = [ f0, f_eta_0, f_eta_2_0 ] 
 	
-	# Make an array for the independent variable
-	etaStop = 1.0
-	etaInc = 0.01
-	eta = np.arange( 0., etaStop, etaInc )
-	
-	# Use the ode solver imported from scipy.integrate
+	# Use the IVP ODE solver imported from scipy.integrate
 	fvalues = odeint( FluidFlowSS, fvars, eta, args=(params,)  )
 	
 	# Return the difference between the known value of the first derivative at the second boundary and its estimated value
