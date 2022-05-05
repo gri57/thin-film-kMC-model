@@ -119,11 +119,6 @@ def update_neighs_pbc( N, callerid, x, y, surfacemat, neighsmat, neighstally ):
 			# current site is not but was a neighbour of the other site 
 			neighsmat[ neighcoords[i,0], neighcoords[i,1] ] -= 1
 			
-		#elif surfacemat[ neighcoords[i,0], neighcoords[i,1] ] <= currh and surfacemat[ neighcoords[i,0], neighcoords[i,1] ] <= prev:
-			# current site was and is a neighbour of the other site 
-		#elif surfacemat[ neighcoords[i,0], neighcoords[i,1] ] > currh and surfacemat[ neighcoords[i,0], neighcoords[i,1] ] > prev:
-			# current site was not and is not a neighbour of the other site 
-			
 	# Update the number of neighbours at the site of interest (x,y).
 	neighsmat[x,y] = siteneighs
 	
