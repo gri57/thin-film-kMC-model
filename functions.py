@@ -138,10 +138,13 @@ def calcWm( neighstally, f = 5 ):
 	
 	"""
 	Calculate the total migration rate. 
+	
 	If default value for f is used (f=5), then this function is equation 3-15 of Shabnam's PhD thesis.
 	If another value for f is provided (f>=1,f<5), then this function is being used
 	to select one of five classes for performing a migration event (see page 27 of 
 	Shabnam's PhD thesis, the sentences immediately following equation 3-12).
+	
+	For efficiency purposes, it is better to use this function with the default f value.
 	"""
 	
 	# preallocate the array for the storage of the values of the rates of migration events
@@ -157,6 +160,42 @@ def calcWm( neighstally, f = 5 ):
 	return Wm
 
 
+@contract( neighstally='ndarray', returns='float' )
+def calcWd( neighstally ):
+	
+	"""
+	Calculate the total desorption rate. 
+	"""
+	
+	# preallocate the array for storing the values of desorption event rates
+	Pd = np.ndarray( 5, 'float' )
+	
+	# populate the preallocated array with the calculated rates of desorption events
+	for i in range(f):
+		Pd[i] = calcPd( i+1 )
+		
+	# Calculate the total desorption rate
+	Wd = np.sum( neighstally*Pd )
+	
+	return Wd
+
+
+@contract( n='int,>=1,<=5', returns='float' )
+def calcPd( n ):
+	
+	"""
+	Calculate the individual rates of desorption events for each number 
+	of neighbours for an atom (each atom can have from 1 to 5 neighbours).
+	This function is equation 3-9 of Shabnam's PhD thesis.
+	"""
+	
+	nu0 = kd0 * np.exp( -Ed / (R*T) )
+	
+	Pd = nu0 * np.exp( -n * E / (R*T) )
+	
+	return Pd
+
+
 @contract( n='int,>=1,<=5', returns='float' )
 def calcPm( n ):
 	
@@ -166,7 +205,9 @@ def calcPm( n ):
 	This function is equation 3-11 of Shabnam's PhD thesis.
 	"""
 	
-	Pm = nu0 * A * np.exp( -n * E / (R*T) )
+	A = (Ed - Em)/(R*T) # equation 3-12 of Shabnam's PhD thesis
+	
+	Pm = A * calcPd( n )
 	
 	return Pm
 

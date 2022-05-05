@@ -4,12 +4,15 @@
 from functions import *
 import numpy as np
 
-# Number of sites in the square simple cubic lattice
+
+# Number of sites along an edge of the square simple cubic lattice
+# N^2 is the total number of atoms
 N = 20
 
 surfacemat = np.ndarray( (N,N), 'int' )
 neighsmat = np.ndarray( (N,N), 'int' )
 neighstally = np.ndarray( 5, 'int' )
+
 
 ### Macroscale model (PDE model) ###
 
@@ -24,9 +27,7 @@ neighstally = np.ndarray( 5, 'int' )
 
 # Calculate Wa, Wd, Wm
 Wa = Pa * np.power( N, 2. )
-Wd = 0.0
-for i in range(5):
-	Wd += float(neighstally[i])*Pd(i+1) 
+Wd = calcWd( neighstally )
 Wm = calcWm( neighstally )
 
 # Use Wa, Wd and Wm to choose between adsorption, desorption or migration (a/d/m)
@@ -69,15 +70,50 @@ else:
 	while zetamod > Wm_vari:
 		neighclass += 1
 		Wm_vari += calcPm( neighclass )
-		# this while loop will not execute as soon as zetamod <= Wm_vari, leaving us with the correct neighclass value
+		# this "while" loop will stop as soon as zetamod <= Wm_vari, leaving us with the correct "neighclass" value
 	del Wm_vari # housekeeping
 	
-	#  form an array containing indeces (row and column numbers) of atoms that have "neighclass" neighbours
-	neighsmat == neighclass
+	# find out the x and y indeces of atoms that have the specified number of neighbours
+	indecesofatoms = np.where( neighsmat == neighclass )
 	
-	#  randomly pick one of those atoms
-	#  randomly find the location xf,yf where the atom selected above will migrate to by adding/subtracting 1 to xi/yi
+	# find out how many atoms have the specified number of neighbours
+	numofatoms = len( indecesofatoms[0] )
 	
+	# choose one of those atoms at random
+	chosenatom = np.random.random_integers( 0, numofatoms-1 )
+	
+	# get the atom's x and y coordinates
+	xi = indecesofatoms[0][chosenatom]
+	yi = indecesofatoms[1][chosenatom]
+	
+	# randomly find the location xf,yf where the atom selected above will migrate to by adding/subtracting 1 to xi/yi
+	chosenneighbour = np.random.random_integers( 0, 3 )
+	if chosenneighbour == 0:
+		xf = xi - 1
+		yf = yi
+		# use periodic boundary conditions
+		if xf < 0:
+			xf += N
+	elif chosenneighbour == 1:
+		xf = xi + 1
+		yf = yi
+		# use periodic boundary conditions
+		if xf >= N:
+			xf -= N
+	elif chosenneighbour == 2:
+		xf = xi
+		yf = yi - 1
+		# use periodic boundary conditions
+		if yf < 0:
+			yf += N
+	elif chosenneighbour == 3:
+		xf = xi
+		yf = yi + 1
+		# use periodic boundary conditions
+		if yf >= N:
+			yf -= N
+	
+	# Perform the migration event
 	surfacemat, neighsmat, neighstally = migration_event( N, xi, yi, xf, yf, surfacemat, neighsmat, neighstally )
 
 
