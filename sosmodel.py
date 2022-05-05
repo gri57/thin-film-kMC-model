@@ -465,58 +465,8 @@ class Observables( object ):
 		return self.current_time
 
 
-def MassTransfMoL( x, params ):
-	
-	"""
-	('ndarray', 'list') -> 'ndarray'
-	
-	Numerical integration of the mass transfer equation - equation 3-3 of Shabnam's PhD 
-	thesis - is done using the Method of Lines.
-	
-	The mass transfer equation  has been transformed from a PDE to ODEs at multiple eta 
-	nodes. Each ODE is the time derivative of the mole fraction at a particular spatial node.
-	
-	x: 			mole fraction values at all spatial nodes (all eta values)
-	derivs: 	temporal derivatives of the mole fraction profile
-	
-	Dimensions of x are the same as the derivs variable that is returned by this
-	function, and the gaslayer.f variable that holds the values of the stream function.
-	
-	"""
-	
-	# Unpack params
-	bc0, gaslayer = params
-	# bc0: 			updated boundary condition for di_x/d_eta (spatial derivative) at eta = 0
-	# gaslayer: 	a GasLayer object (an instance of the GasLayer class)
-	
-	
-	# Calculate these values to be able to use multiplication instead of division (multiplication is faster)
-	d_eta_inv = np.power( gaslayer.d_eta, -1. )
-	d_eta2_inv = np.power( gaslayer.d_eta, -2. )
-	
-	# Preallocate the variable for the storage of time derivatives at all nodes
-	derivs = np.ndarray(int(round(gaslayer.eta_inf/gaslayer.d_eta))+1, 'float') 
 
-	# Calculate x at eta = 0 using the reverse of forward difference approximation of the derivative
-	x[0] = x[1] - gaslayer.d_eta * bc0
-
-	# Calculate the time derivative of eta at the eta = 0 node.
-	# forward difference approximation
-	derivs[0] = gaslayer.Sc_inv * d_eta2_inv * ( x[2] - 2.*x[1] + x[0] ) + gaslayer.f[0] * bc0
-	
-	# Calculate the time derivative of eta at each internal node.
-	# central difference approximation
-	# Using array math instead of a for loop for faster calculations. NumPy does not include the last value in the 
-	# indeces used below: [1:-1] will include values from index 1 to index -2 (second last), not -1 (last).
-	derivs[1:-1] = gaslayer.Sc_inv * d_eta2_inv * ( x[0:-2] - 2.*x[1:-1] + x[2:] ) + gaslayer.f[1:-1] * 2. * d_eta_inv * ( x[2:] - x[0:-2] )
-	
-	# The time derivative of eta at the eta = inf node is always zero because the boundary condition is x( eta=inf ) = X.
-	derivs[-1] = 0.0
-	
-	return derivs
-
-
-def MassTransfMoL2( x, timepoint, params ):
+def MassTransfMoL( x, timepoint, params ):
 	
 	"""
 	('ndarray', 'float', 'list') -> 'ndarray'
@@ -581,7 +531,7 @@ def calc_xgrow_PDE( thinfilm, gaslayer, observables ):
 	bc0 = gaslayer.RaRd_prefactor * Ra_Rd
 
 	# Use the IVP ODE solver imported from scipy.integrate
-	xvalues = odeint( MassTransfMoL2, gaslayer.xprofile, [observables.current_time, observables.current_time+observables.coupling_time], args=( [bc0, gaslayer] ,)  )
+	xvalues = odeint( MassTransfMoL, gaslayer.xprofile, [observables.current_time, observables.current_time+observables.coupling_time], args=( [bc0, gaslayer] ,)  )
 	''' Current time and the time point immediately following it were provided to odeint.
 	 	Thus, xvalues[0,:] corresponds to x values at the "current time" and xvalues[1,:] 
 	 	corresponds to x values at the time point immediately following (the latter is 
