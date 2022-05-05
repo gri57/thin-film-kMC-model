@@ -439,6 +439,7 @@ class Observables( object ):
 		
 		self.surfacemat_previous = np.ones( (self.N,self.N), 'int' ) # @grigoriy - this is a bit redundant with ThinFilm
 		
+		self.total_time_minus_1 = self.total_time - self.coupling_time # for the while loop in sosmain.py
 		
 	def calculate_observables(self, surfacemat, counter):
 		

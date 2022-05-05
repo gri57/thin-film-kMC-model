@@ -5,9 +5,9 @@ tic()
 
 ''' Create class instances (objects). '''
 
-thinfilm = ThinFilm(100) # the number of sites (N) along an edge of the square film must be provided
+thinfilm = ThinFilm(30) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables(thinfilm.N, 0.1, 100.0) # provide N, the coupling time and the total time
+observables = Observables(thinfilm.N, 0.1, 1.0) # provide N, the coupling time and the total time
 
 # Optimization for calc_xgrow_PDE function - helps to avoid repeating the same calculations
 gaslayer.eqn_3_20_denominator = np.power(2. * gaslayer.a * np.power(thinfilm.N, 2.) * observables.coupling_time, -1.)
@@ -27,9 +27,9 @@ gaslayer.f_2_d_eta_inv = gaslayer.f[1:-1] * 2. * gaslayer.d_eta_inv
 
 ''' Conduct the coupled KMC PDE simulation. '''
 
-counter = 0 # index for output arrays
+counter = 1 # index for output arrays
 
-while observables.current_time < observables.total_time:
+while observables.current_time < observables.total_time_minus_1:
 
 	if thinfilm.dtkmc < observables.coupling_time:
 
@@ -58,6 +58,7 @@ while observables.current_time < observables.total_time:
 		
 		''' @grigoriy - for some strange reason if at this point observables.current_time equals to 
 		observables.total_time, Python will still think that current_time is less than total_time. 
+		As a result, it was necessary to use observables.total_time_minus_1 instead of observables.total_time.
 		It is possible that memory locations for current_time and total_time are compared rather than
 		the values themselves. '''
 
