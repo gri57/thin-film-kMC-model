@@ -133,3 +133,40 @@ def update_neighs_pbc( N, callerid, x, y, surfacemat, neighsmat, neighstally ):
 	return neighsmat, neighstally
 
 
+@contract( neighstally='ndarray', f='int,>=1,<=5', returns='float' )
+def calcWm( neighstally, f = 5 ):
+	
+	"""
+	Calculate the total migration rate. 
+	If default value for f is used (f=5), then this function is equation 3-15 of Shabnam's PhD thesis.
+	If another value for f is provided (f>=1,f<5), then this function is being used
+	to select one of five classes for performing a migration event (see page 27 of 
+	Shabnam's PhD thesis, the sentences immediately following equation 3-12).
+	"""
+	
+	# preallocate the array for the storage of the values of the rates of migration events
+	Pm = np.ndarray( f, 'float' )
+	
+	# populate the preallocated array with calculated rates of migration events
+	for i in range(f):
+		Pm[i] = calcPm( i+1 )
+		
+	# Calculate the total migration rate
+	Wm = np.sum( neighstally[0:f]*Pm )
+	
+	return Wm
+
+
+@contract( n='int,>=1,<=5', returns='float' )
+def calcPm( n ):
+	
+	"""
+	Calculate the individual rates of migration events for each number 
+	of neighbours for an atom (each atom can have from 1 to 5 neighbours).
+	This function is equation 3-11 of Shabnam's PhD thesis.
+	"""
+	
+	Pm = nu0 * A * np.exp( -n * E / (R*T) )
+	
+	return Pm
+
