@@ -1,30 +1,11 @@
 from sosmodel import *
-
-def tic():
-    """ Homemade version of matlab tic function
-    http://stackoverflow.com/questions/5849800/tic-toc-functions-analog-in-python
-    """
-    
-    import time
-    global startTime_for_tictoc
-    startTime_for_tictoc = time.time()
-
-def toc():
-    """ Homemade version of matlab toc function
-    http://stackoverflow.com/questions/5849800/tic-toc-functions-analog-in-python
-    """
-    
-    import time
-    if 'startTime_for_tictoc' in globals():
-        print "Elapsed time is " + str(time.time() - startTime_for_tictoc) + " seconds."
-    else:
-        print "Toc: start time not set"
+from tictoc import * # import tic() and toc()
 
 ''' Create class instances (objects) '''
 
-thinfilm = ThinFilm( 100 ) # the number of sites (N) along an edge of the square film must be provided
+thinfilm = ThinFilm( 30 ) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables( thinfilm.N, 0.1, 15.0 ) # provide N, the coupling time and the total time
+observables = Observables( thinfilm.N, 0.01, 1.0 ) # provide N, the coupling time and the total time
 
 ''' Calculate the dimensionless stream function '''
 
@@ -47,8 +28,12 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 		run_sos_KMC(thinfilm, gaslayer)
 
 	else:
+		print ''
+		print 'Na, Nd, Nm = ', thinfilm.Na, ',', thinfilm.Nd, ',', thinfilm.Nd
 		
 		calc_xgrow_PDE( thinfilm, gaslayer, observables.coupling_time )
+		print 'x_grow = ', gaslayer.xgrow
+		print 'mole fraction profile: ', gaslayer.xprofile
 		
 		observables.update_current_time()
 		observables.calculate_observables(thinfilm.surfacemat)
@@ -57,6 +42,7 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 		thinfilm.dtkmc = 0. 
 		thinfilm.Na = 0.
 		thinfilm.Nd = 0.
+		thinfilm.Nm = 0.
 		
 		print 'Current simulation time:', observables.current_time # progress report
 		''' @grigoriy - for some strange reason if at this point observables.current_time equals to 

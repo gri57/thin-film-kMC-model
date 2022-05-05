@@ -27,6 +27,7 @@ class ThinFilm(object):
 						
 		Na: 			(int) integer to keep track of adsorbed atoms
 		Nd: 			(int) integer to keep track of desorbed atoms
+		Nm:				(int) integer to keep track of migrated atoms
 		dtkmc:			(float) KMC timestep 
 		Wa:				(float) total adsorption rate
 		Wd: 			(float) total desorption rate
@@ -49,6 +50,7 @@ class ThinFilm(object):
 		self.neighstally[4] = self.N*self.N  # perfectly flat surface - initially all atoms have 5 neighbours
 		self.Na = 0.
 		self.Nd = 0.
+		self.Nm = 0.
 		self.dtkmc = 0.
 		self.Wa = 0.
 		self.Wd = 0.
@@ -292,7 +294,7 @@ class GasLayer(object):
 		
 		self.X = 2e-6
 		self.eta_inf = 6.0
-		self.d_eta = 0.1
+		self.d_eta = 0.05
 		
 		# Initial precursor mole fraction profile is uniform, but during the simulation 
 		# the values should decrease the closer we get to the surface.
@@ -446,10 +448,10 @@ class Observables( object ):
 		return self.current_time
 
 
-def MassTransfMoL( x, tao, params ):
+def MassTransfMoL( x, params ):
 	
 	"""
-	('ndarray', 'ndarray', 'list') -> 'ndarray'
+	('ndarray', 'list') -> 'ndarray'
 	
 	Numerical integration of the mass transfer equation - equation 3-3 of Shabnam's PhD 
 	thesis - is done using the Method of Lines.
@@ -476,7 +478,7 @@ def MassTransfMoL( x, tao, params ):
 	d_eta2_inv = np.power( gaslayer.d_eta, -2. )
 	
 	# Preallocate the variable for the storage of time derivatives at all nodes
-	derivs = np.ndarray( int( gaslayer.eta_inf/gaslayer.d_eta )+1, 'float' ) 
+	derivs = np.ndarray(int(round(gaslayer.eta_inf/gaslayer.d_eta))+1, 'float') 
 
 	# Calculate x at eta = 0 using the reverse of forward difference approximation of the derivative
 	x[0] = x[1] - gaslayer.d_eta * bc0
@@ -493,7 +495,7 @@ def MassTransfMoL( x, tao, params ):
 	
 	# The time derivative of eta at the eta = inf node is always zero because the boundary condition is x( eta=inf ) = X.
 	derivs[-1] = 0.0
-	
+	print 'Time derivatives are :', derivs
 	return derivs
 
 
@@ -512,12 +514,12 @@ def calc_xgrow_PDE( thinfilm, gaslayer, dtcouple ):
 
 	# Boundary condition (di_x/di_eta value) at eta = 0 (equation 3-6 of Shabnam's PhD thesis)
 	bc0 = gaslayer.Sc*Ra_Rd*np.power( 2. * gaslayer.a * gaslayer.mu_b_rho_b, -0.5 ) 
+	print 'bc0 = ', bc0
 
-	# Calculate the mole fraction values at each eta value, as well as the time derivative values
-	xdx_values = odeint( MassTransfMoL, gaslayer.xprofile, np.array( [0.,dtcouple] ), args=( [bc0, gaslayer], )  )
-
+	#print 'x profile and derivatives are ', xdx_values
 	# update and store the mole fraction profile within the gas boundary layer above the thin film
-	gaslayer.xprofile = xdx_values[0,:]
+	time_derivs_x_MoL = MassTransfMoL( gaslayer.xprofile, [bc0, gaslayer] ) 
+	gaslayer.xprofile += time_derivs_x_MoL * dtcouple
 	
 	# update and store the value of the mole fraction on the surface of the thin film
 	gaslayer.xgrow = gaslayer.xprofile[0]
@@ -642,6 +644,9 @@ def run_sos_KMC(thinfilm, gaslayer):
 		
 		# Perform the migration event
 		thinfilm.migration_event(xi, yi, xf, yf)
+		
+		# update the count of migrated atoms
+		thinfilm.Nm += 1. # @grigoriy - this must be reset when thinfilm.dtkmc exceeds the coupling time
 
 
 	# Increment the KMC timestep (equation 3-16 of Shabnam's PhD thesis)
