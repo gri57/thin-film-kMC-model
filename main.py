@@ -44,7 +44,7 @@ Wm = calcWm( neighstally )
 correct2ndderivative = fsolve( residualFluidFlowSS, 1.2 )
 
 # Solve the Fluid Flow conservation equation at steady state (equation 3-1 of Shabnam's PhD thesis)
-# For the Fluid Flow conservation equation, get the values of the dependent variable and its first and second derivatives 
+# get the values of the dependent variable and its first and second derivatives 
 fvalues = calcFluidFlowSS( correct2ndderivative )
 
 # Carry on with the simulation until the final time is reached

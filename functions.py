@@ -213,7 +213,7 @@ def calcPm( n ):
 	return Pm
 
 
-#@contract( N='int,>0', surfacemat='ndarray', neighsmat='ndarray', neighstally='ndarray', Wa='float', Wd='float', Wm='float', dtkmc='float', returns='float' )
+#@contract( N='int,>0', surfacemat='ndarray', neighsmat='ndarray', neighstally='ndarray', dtkmc='float', Wa='float', Wd='float', Wm='float', returns='float' )
 def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm ):
 	
 	"""
@@ -316,7 +316,7 @@ def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm
 	return dtkmc
 
 
-@contract( returns='float,float,float,float,ndarray' )
+#@contract( returns='float,float,float,float,ndarray,float,float,float' )
 def FFSSparams():
 	
 	# Parameter values
@@ -327,12 +327,13 @@ def FFSSparams():
 	f0 = 0.0 # known value of the dependent variable at the first boundary 
 	f_eta_0 = 0.0 # known value of the first derivative at the first boundary
 	
-	# Make an array for the independent variable
-	etaStop = 1.0
-	etaInc = 0.01
-	eta = np.arange( 0., etaStop, etaInc )
+	# Make an array for the independent variable (dimensionless distance)
+	eta_0 = 0.
+	eta_inf = 6.0
+	d_eta = 0.02
+	eta = np.arange( eta_0, eta_inf, d_eta )
 	
-	return rho_b, rho, f0, f_eta_0, eta
+	return rho_b, rho, f0, f_eta_0, eta, eta_0, d_eta, eta_inf
 	
 
 #@contract( f_eta_2_0='float', returns='ndarray' )
@@ -346,7 +347,8 @@ def calcFluidFlowSS(f_eta_2_0):
 	"""
 	
 	# Get the parameter values and intial values for the Fluid Flow conservation equation at steady state
-	rho_b, rho, f0, f_eta_0, eta = FFSSparams()
+	# skip the variables returned by FFSSparams() that are not necessary for these purposes
+	rho_b, rho, f0, f_eta_0, eta, _, _, _ = FFSSparams()
 	
 	# Pack the parameter values for the ODE solver
 	params = [rho_b, rho] 
@@ -366,6 +368,8 @@ def residualFluidFlowSS(f_eta_2_0):
 	
 	"""
 	Solve the fluid flow conservation equation at steady state (equation 3-1 in Shabnam's PhD thesis).
+	
+	This is a BVP ODE problem (not PDE, since the equation is solved at steady state).
 	There are three known boundary conditions (dependent variable and its first derivative are 
 	known at the first boundary, and the first derivative is known at the second boundary).
 	Since the second derivative at the first boundary is not known, it has to be solved for 
@@ -376,7 +380,8 @@ def residualFluidFlowSS(f_eta_2_0):
 	"""
 	
 	# Get the parameter values and intial values for the Fluid Flow conservation equation at steady state
-	rho_b, rho, f0, f_eta_0, eta = FFSSparams()
+	# skip the variables returned by FFSSparams() that are not necessary for these purposes
+	rho_b, rho, f0, f_eta_0, eta, _, _, _ = FFSSparams()
 	
 	# Pack the parameter values for the ODE solver
 	params = [rho_b, rho] 
@@ -407,6 +412,57 @@ def FluidFlowSS( fvars, eta, params ):
 	derivs = [ f_eta,
 			   f_eta_2,
 			   -f * f_eta_2 - 0.5 * ( rho_b/rho - f_eta**2. ) ]
+	
+	return derivs
+
+
+#@contract( x='ndarray', eta='ndarray', params='list', returns='ndarray' )
+def MassTransfMoL( x, eta, params ):
+	
+	"""
+	The mass transfer equation - equation 3-3 of Shabnam's PhD thesis.
+	
+	x is the value of the dependent variable at all internal nodes (excludes
+	boundary conditions). Dimensions of x are the same as the derivs variable 
+	that is returned by this function, and x is 2 entries shorter than 
+	the f variable that holds the values of the stream function since 
+	f is solved for the boundary condition nodes as well as all internal 
+	nodes.
+	"""
+	
+	# 1/Sc, where Sc is the Schmidt number of the precursor
+	Sc_inv = 1.
+	
+	# Boundary condition for the mole fraction of the precursor (x) at infinite eta
+	x_at_etainf = 1.
+	
+	# Unpack the parameter values: the values of the stream function at steady 
+	# state (f) and the boundary condition at eta = 0 (value of di_x/d_eta at eta = 0)
+	f, bc0 = params 
+	
+	# Get the value of the step size in dimensionless distance
+	_, _, _, _, _, _, d_eta, _ = FFSSparams()
+	
+	# Calculate these values to be able to later use multiplication instead of division (multiplication is faster)
+	d_eta_inv = np.power( d_eta, -1. )
+	d_eta2_inv = np.power( d_eta, -2. )
+	
+	# Preallocate the variable for storage of derivatives at all internal nodes
+	derivs = np.ndarray( max(f.shape)-2, 'float' )
+	
+	# Calculate the time derivative of eta at the node adjacent to the eta = 0 boundary condition 
+	# derivs[0] node corresponds to f[1] node
+	x_at_eta0 = x[1] - 2. * d_eta * bc0
+	derivs[0] = Sc_inv * d_eta2_inv * ( x_at_eta0 - 2.*x[0] + x[1] ) + f[1] * 2. * d_eta_inv * ( x[1] - x_at_eta0 )
+	
+	# Calculate the time derivative of eta at each node that is not adjacent to a boundary
+	# Using array math instead of a for loop. NumPy does not include the last value in the 
+	# indeces used below: [1:-1] will include values from index 1 to index -2 (second last), not -1 (last).
+	derivs[1:-1] = Sc_inv * d_eta2_inv * ( x[0:-2] - 2.*x[1:-1] + x[2:] ) + f[2:-2] * 2. * d_eta_inv * ( x[2:] - x[0:-2] )
+	
+	# Calculate the time derivative of eta at the node adjacent to the eta = inf boundary condition
+	# derivs[-1] node corresponds to the f[-2] node
+	derivs[-1] = Sc_inv * d_eta2_inv * ( x[-2] - 2.*x[-1] + x_at_etainf ) + f[-2] * 2. * d_eta_inv * ( x_at_etainf - x[-2] )
 	
 	return derivs
 
