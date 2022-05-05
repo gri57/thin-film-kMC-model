@@ -36,6 +36,9 @@ def desorption_event( N, x, y, surfacemat, neighsmat, neighstally ):
 	# Remove an atom from the surface at the specified site.
 	surfacemat[x,y] -= 1
 	
+	if surfacemat[x,y] <= 0:
+		print 'The number of atoms at a surface site is zero or less.'
+
 	# Update the number of neighbours at each site affected by desorption, use periodic boundaries.
 	neighsmat, neighstally = update_neighs_pbc( N, 'des', x, y, surfacemat, neighsmat, neighstally )
 	
@@ -109,10 +112,10 @@ def update_neighs_pbc( N, callerid, x, y, surfacemat, neighsmat, neighstally ):
 			siteneighs += 1
 			
 		# Update neighbour count at those sites that were affected by the adsorption/desorption event.
-		if surfacemat[ neighcoords[i,0], neighcoords[i,1] ] <= currh and surfacemat[ neighcoords[i,0], neighcoords[i,1] ] > prev:
+		if surfacemat[ neighcoords[i,0], neighcoords[i,1] ] <= currh and surfacemat[ neighcoords[i,0], neighcoords[i,1] ] > prevh:
 			# current site now is but was not a neighbour of the other site 
 			neighsmat[ neighcoords[i,0], neighcoords[i,1] ] += 1
-		elif surfacemat[ neighcoords[i,0], neighcoords[i,1] ] > currh and surfacemat[ neighcoords[i,0], neighcoords[i,1] ] <= prev:
+		elif surfacemat[ neighcoords[i,0], neighcoords[i,1] ] > currh and surfacemat[ neighcoords[i,0], neighcoords[i,1] ] <= prevh:
 			# current site is not but was a neighbour of the other site 
 			neighsmat[ neighcoords[i,0], neighcoords[i,1] ] -= 1
 			
@@ -146,7 +149,7 @@ def calcWd( neighstally ):
 	Pd = np.ndarray( 5, 'float' )
 	
 	# populate the preallocated array with the calculated rates of desorption events
-	for i in range(f):
+	for i in range(5):
 		Pd[i] = calcPd( i+1 )
 		
 	# Calculate the total desorption rate
@@ -191,6 +194,13 @@ def calcPd( n ):
 	This function is equation 3-9 of Shabnam's PhD thesis.
 	"""
 	
+	# some of the parameters are repeated in calcPm
+	kd0 = 1e9 # 1/s
+	Ed = 17e3 # cal/mol
+	R = 1.987 # cal/K.mol
+	T = 800. # Kelvin
+	E = 17e3 # cal/mol
+	
 	nu0 = kd0 * np.exp( -Ed / (R*T) )
 	
 	Pd = nu0 * np.exp( -n * E / (R*T) )
@@ -207,6 +217,12 @@ def calcPm( n ):
 	This function is equation 3-11 of Shabnam's PhD thesis.
 	"""
 	
+	# some of these parameters are repeated in calcPd
+	Ed = 17e3 # cal/mol
+	Em = 10.2e3 # cal/mol
+	R = 1.987 # cal/K.mol
+	T = 800. # Kelvin
+	
 	A = (Ed - Em)/(R*T) # equation 3-12 of Shabnam's PhD thesis
 	
 	Pm = A * calcPd( n )
@@ -214,8 +230,8 @@ def calcPm( n ):
 	return Pm
 
 
-#@contract( N='int,>0', surfacemat='ndarray', neighsmat='ndarray', neighstally='ndarray', dtkmc='float', Wa='float', Wd='float', Wm='float', returns='float' )
-def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm ):
+#@contract( N='int,>0', surfacemat='ndarray', neighsmat='ndarray', neighstally='ndarray', dtkmc='float', Wa='float', Wd='float', Wm='float', Na='float', Nd='float', returns='float,float,float' )
+def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm, Na, Nd ):
 	
 	"""
 	Microscale model - solid-on-solid with adsorption, migration and desorption.
@@ -232,18 +248,26 @@ def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm
 	# condition is executed and all other conditions are skipped.
 
 	if zeta < Wa*Wtotal_inv:
+		
 		# perform adsorption
 		# choose a site randomly (pick a random index for the arrays, Python indexing starts at zero)
 		x = np.random.random_integers(0,N-1)
 		y = np.random.random_integers(0,N-1)
 		surfacemat, neighsmat, neighstally = adsorption_event( N, x, y, surfacemat, neighsmat, neighstally )
 		
+		# update the count of adsorbed atoms
+		Na += 1.
+		
 	elif zeta < (Wa+Wd)*Wtotal_inv:
+		
 		# perform desorption
 		# choose a site randomly (pick a random index for the arrays, Python indexing starts at zero)
 		x = np.random.random_integers(0,N-1)
 		y = np.random.random_integers(0,N-1)
 		surfacemat, neighsmat, neighstally = desorption_event( N, x, y, surfacemat, neighsmat, neighstally )
+		
+		# update the count of desorbed atoms
+		Nd += 1.
 		
 	else:
 		# perform migration
@@ -314,7 +338,7 @@ def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm
 	sigma = np.random.uniform( low=1e-53, high=1.0 )
 	dtkmc += -np.log( sigma ) * Wtotal_inv    # equation 3-16
 	
-	return dtkmc
+	return surfacemat, neighsmat, neighstally, dtkmc, Na, Nd
 
 
 #@contract( returns='float,float,float,float,ndarray,float,float,float' )
@@ -429,17 +453,17 @@ def MassTransfMoL( x, tao, params ):
 	stream function.
 	"""
 	
-	# 1/Sc, where Sc is the Schmidt number of the precursor
-	Sc_inv = 1./1.
-	
 	# Unpack the parameter values: the values of the stream function at steady 
 	# state (f) and the boundary condition at eta = 0 (value of di_x/d_eta at eta = 0)
-	f, bc0 = params 
+	f, bc0, Sc = params 
+	
+	# 1/Sc, where Sc is the Schmidt number of the precursor
+	Sc_inv = 1./Sc
 	
 	# Get the value of the step size in dimensionless distance
 	_, _, _, _, _, _, d_eta, _ = FFSSparams()
 	
-	# Calculate these values to be able to later use multiplication instead of division (multiplication is faster)
+	# Calculate these values to be able to use multiplication instead of division (multiplication is faster)
 	d_eta_inv = np.power( d_eta, -1. )
 	d_eta2_inv = np.power( d_eta, -2. )
 	
@@ -448,7 +472,7 @@ def MassTransfMoL( x, tao, params ):
 	
 	# Calculate x at eta = 0 using the reverse of forward difference approximation of the derivative
 	x[0] = x[1] - d_eta * bc0
-	
+
 	# Calculate the time derivative of eta at the eta = 0 node.
 	# forward difference approximation
 	derivs[0] = Sc_inv * d_eta2_inv * ( x[2] - 2.*x[1] + x[0] ) + f[0] * d_eta_inv * ( x[1] - x[0] )
@@ -463,4 +487,51 @@ def MassTransfMoL( x, tao, params ):
 	derivs[-1] = 0.0
 	
 	return derivs
+
+
+def runGasPhasePDE( N, dtcouple, Na, Nd, fvalues, xvalues, neighstally ):
+	
+	# Select parameter values from Table 3-1 of Shabnam's PhD thesis
+	a = 5.0 # 1/s
+	Ctot = 1.6611e-5 # sites.mol/m^2
+	m = 0.028 # kg/mol
+	P = 1e5 # Pa
+	S0 = 0.1
+	Sc = 0.75
+	mu_b_rho_b = 9e11 # kg^2/(m^4.s)
+	
+	T = 800. # Kelvin
+	R = 1.987 # cal/K.mol
+	
+	# The difference between adsorption and desorption rates (equation 3-20 of Shabnam's PhD thesis)
+	Ra_Rd = ( Na - Nd ) * np.power( 2.*a*np.power(N,2.)*dtcouple, -1. )
+
+	# Boundary condition (di_x/di_eta value) at eta = 0: equation 3-6 of Shabnam's PhD thesis
+	bc0 = Sc*Ra_Rd*np.power( 2.*a*mu_b_rho_b, -0.5 ) 
+
+	# Find the mole fraction profile vs dimensionless distance for the next time step
+	# pass the stream function solution and the boundary condition value, and the Schmidt number, 
+	# to solve the mass transfer function for the precursor mole fraction profile.
+	# The solution contains the x profile and the derivatives at each node. 
+	# Only the x profile is of interest.
+	xvalues = odeint( MassTransfMoL, xvalues, np.array( [0.,dtcouple] ), args=([ fvalues[:,0], bc0, Sc ],)  )
+
+	if np.sum( xvalues < 0.0 ) > 0.0:
+		raise RuntimeError('At least one negative value is present in the precursor mole fraction profile.')
+
+	# Get the mole fraction of the precursor on the surface
+	xgrow = xvalues[0][0]
+
+	#if xgrow == 0.0:
+		#raise RuntimeError('Precursor mole fraction on the surface is zero.')
+
+	# Calculate Pa (equation 3-8 of Shabnam's thesis)
+	Pa = S0 * P * xgrow * np.power( 2.*np.pi*m*R*T, -0.5 ) * np.power( Ctot, -1.0 )
+
+	# Calculate Wa, Wd, Wm
+	Wa = Pa * np.power( N, 2. )
+	Wd = calcWd( neighstally )
+	Wm = calcWm( neighstally )
+	
+	return Wa, Wd, Wm, xvalues[0,:] 
 
