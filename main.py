@@ -24,8 +24,9 @@ neighsmat[0][3] = 1
 # Array that tells how many atoms in total there are with 1, 2, 3, 4 and 5 neighbours
 neighstally = np.zeros( 5, 'int' )
 neighstally[4] = N*N # perfect surface - all atoms have 5 neighbours
-neighstally[4] = N*N-1
+neighstally[4] -= 1
 neighstally[0] = 1
+
 # Bulk mole fraction
 X = 2e-6
 
@@ -34,9 +35,14 @@ dtcouple = 0.1
 # initialize KMC timestep (updated by the runSolidOnSolidKMC() function)
 dtkmc = 0.0
 # Total simulation time
-Ttot = 1.0
+Ttot = 10.0
 # Current simulation time
 Tcurr = 0.0
+
+# Output data
+rough = np.zeros( int(Ttot/dtcouple), 'float' )
+thick = np.zeros( int(Ttot/dtcouple), 'float' )
+growr = np.zeros( int(Ttot/dtcouple), 'float' )
 
 # Find the value of the 2nd derivative of the dependent variable in the Fluid Flow conservation equation at the first boundary
 correct2ndderivative = fsolve( residualFluidFlowSS, 1.2 )
@@ -50,6 +56,12 @@ xinit[-1] = X
 
 # Run initial calculations (gas is provided to the chamber, when it makes its way down to the substrate adsorption/desorption/migration begins)
 Wa, Wd, Wm, xvalues = runGasPhasePDE( N, dtcouple*1e-6, Na, Nd, fvalues, xinit, neighstally )
+
+# Index for roughness, growth rate and thickness tracking arrays
+counter = 0
+
+# Initialize the variable for storing "old" surface height information (for growth rate calculations)
+surfacemat_prev = surfacemat.copy()
 
 # Carry on with the simulation until the final time is reached
 while Tcurr < Ttot:
@@ -77,6 +89,34 @@ while Tcurr < Ttot:
 
 		### Calculate roughness, growth rate and thickness ###
 		
+		# roughness
+		# find out the difference between current location and row immediately below
+		# current row and row immediately above yields the same result, hence multiplication by 2
+		rough[counter] += 2.*np.sum(np.abs( surfacemat[1:,:] - surfacemat[0:-1,:] )) + 2.*np.sum(np.abs( surfacemat[0,:] - surfacemat[-1,:] ))
+		# the difference between the current column and column immediately before is the same as between current and immediately after
+		rough[counter] += 2.*np.sum(np.abs( surfacemat[:,1:] - surfacemat[:,0:-1] )) + 2.*np.sum(np.abs( surfacemat[:,-1] - surfacemat[:,0] ))
+		rough[counter] /= (2.*N*N)
+		rough[counter] += 1.
+		
+		# thickness
+		thick[counter] = np.sum( surfacemat ) * np.power( N, -2. )
+		
+		# growth rate
+		growr[counter] = np.sum( surfacemat - surfacemat_prev ) / np.power( N, 2. ) / dtcouple
+		
+		# store the matrix with heights at each site for the next growth rate calculation
+		surfacemat_prev = surfacemat.copy()
+		
+		# update the index
+		counter += 1
 		
 print "Done!"
 print surfacemat
+print neighsmat
+print neighstally
+print '\nRoughness:'
+print rough
+print '\nThicknesses:'
+print thick
+print '\nGrowth rates'
+print growr

@@ -123,11 +123,11 @@ def update_neighs_pbc( N, callerid, x, y, surfacemat, neighsmat, neighstally ):
 	neighsmat[x,y] = siteneighs
 	
 	# Update the tally of neighbours
-	neighstally[0] = np.sum( neighstally == 1 )
-	neighstally[1] = np.sum( neighstally == 2 )
-	neighstally[2] = np.sum( neighstally == 3 )
-	neighstally[3] = np.sum( neighstally == 4 )
-	neighstally[4] = np.sum( neighstally == 5 )
+	neighstally[0] = np.sum( neighsmat == 1 )
+	neighstally[1] = np.sum( neighsmat == 2 )
+	neighstally[2] = np.sum( neighsmat == 3 )
+	neighstally[3] = np.sum( neighsmat == 4 )
+	neighstally[4] = np.sum( neighsmat == 5 )
 	
 	
 	return neighsmat, neighstally
