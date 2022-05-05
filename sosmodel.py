@@ -17,6 +17,8 @@ class ThinFilm(object):
 		surfacemat: 	(ndarray 'int') array with the number of atoms at every site (start 
 						with a perfectly flat surface)
 						
+		prevh:			(int) integer that keeps track of the height at a site before adsorption/desorption was performed
+		
 		neighlist:		(ndarray 'int') array with coordinates of neighbours for each location on the surface
 						
 		neighsmat: 		(ndarray 'int') array with the number of neighbours of each atom at every  
@@ -47,6 +49,7 @@ class ThinFilm(object):
 		self.N = N
 		
 		self.surfacemat = np.ones( (self.N,self.N), 'int' )
+		self.prevh = 1
 		self.neighlist = np.zeros( (self.N,self.N,4,2), 'int' ) # N^2 atoms on surface, each has 4 neighbours, each neighbour has 2 coordinates (x,y)
 		self.neighsmat = 5*np.ones( (self.N,self.N), 'int' )
 		self.neighstally = np.zeros( 5, 'int' )
@@ -97,12 +100,15 @@ class ThinFilm(object):
 		
 		"""
 		
+		# Store the original height (for update_neighs_pbc method)
+		self.prevh = self.surfacemat[x,y]
+		
 		# Add an atom to the surface at the specified site.
 		# surfacemat will be updated and stored
 		self.surfacemat[x,y] += 1
 		
 		# Update the number of neighbours at each site affected by adsorption, use periodic boundaries.
-		self.update_neighs_pbc( 'ads', x, y )
+		self.update_neighs_pbc( x, y )
 		
 		return None
 
@@ -116,12 +122,15 @@ class ThinFilm(object):
 		
 		"""
 		
+		# Store the original height (for update_neighs_pbc method)
+		self.prevh = self.surfacemat[x,y]
+		
 		# Remove an atom from the surface at the specified site.
 		# surfacemat will be updated and stored
 		self.surfacemat[x,y] -= 1
 		
 		# Update the number of neighbours at each site affected by desorption, use periodic boundaries.
-		self.update_neighs_pbc( 'des', x, y )
+		self.update_neighs_pbc( x, y )
 		
 		return None
 
@@ -148,23 +157,15 @@ class ThinFilm(object):
 		return None
 
 
-	def update_neighs_pbc( self, callerid, x, y ):
+	def update_neighs_pbc( self, x, y ):
 		
 		""" Do a local update of neighbours for atoms affected by adsorption, desorption, and 
 		migration events. Use periodic boundary conditions.
 		
-		callerid:	(str) character string that describes the function that called this function
 		x:			(int) x coordinate of the atom on the thin film surface
 		y:			(int) y coordinate of the atom on the thin film surface
 		
 		"""
-		
-		# Using the callerid flag, find out the height at the site before the action of 
-		# the function that called update_neighs_pbc.
-		if callerid == 'ads':
-			prevh = self.surfacemat[x,y] - 1
-		elif callerid == 'des':
-			prevh = self.surfacemat[x,y] + 1
 		
 		''' Update neighbour count at (x,y) site. '''
 		
@@ -184,11 +185,11 @@ class ThinFilm(object):
 				
 			''' Update neighbour count at those sites that were affected by the adsorption/desorption event. '''
 			
-			if self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= self.surfacemat[x,y] and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > prevh:
+			if self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= self.surfacemat[x,y] and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > self.prevh:
 				# current site now is but was not a neighbour of the other site 
 				self.neighsmat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] += 1
 				
-			elif self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > self.surfacemat[x,y] and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= prevh:
+			elif self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] > self.surfacemat[x,y] and self.surfacemat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] <= self.prevh:
 				# current site is not but was a neighbour of the other site 
 				self.neighsmat[ self.neighlist[x,y,i,0], self.neighlist[x,y,i,1] ] -= 1
 				
