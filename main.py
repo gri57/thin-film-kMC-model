@@ -4,6 +4,7 @@
 
 from functions import *
 import numpy as np
+from scipy.optimize import fsolve
 
 
 # Number of sites along an edge of the square simple cubic lattice
@@ -31,25 +32,42 @@ Ttot = 1.0
 # Current simulation time
 Tcurr = 0.0
 
+# Calculate the values of dimensionless stream function versus eta
+f_vs_eta_values = calcFluidFlowSS()
 
+# Calculate Wa, Wd, Wm
+Wa = Pa * np.power( N, 2. )
+Wd = calcWd( neighstally )
+Wm = calcWm( neighstally )
+
+# Find the value of the 2nd derivative of the dependent variable in the Fluid Flow conservation equation at the first boundary
+correct2ndderivative = fsolve( residualFluidFlowSS, 1.2 )
+
+# Solve the Fluid Flow conservation equation at steady state (equation 3-1 of Shabnam's PhD thesis)
+# For the Fluid Flow conservation equation, get the values of the dependent variable and its first and second derivatives 
+fvalues = calcFluidFlowSS( correct2ndderivative )
+
+# Carry on with the simulation until the final time is reached
 while Tcurr < Ttot:
-
-	# Calculate Wa, Wd, Wm
-	Wa = Pa * np.power( N, 2. )
-	Wd = calcWd( neighstally )
-	Wm = calcWm( neighstally )
 
 	# Check the time, integrate PDE equations if coupling time has been reached
 	if dtkmc < dtcouple:
 		
-		### Microscale model (solid-on-solid) ###
-		# update of dtkmc is done within the function
+		### microscale model (solid-on-solid) ###
+		
+		# calculate Wa, Wd, Wm
+		Wa = Pa * np.power( N, 2. )
+		Wd = calcWd( neighstally )
+		Wm = calcWm( neighstally )
+		
+		# the update of dtkmc is done within the function
 		dtkmc = runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, Wa, Wd, Wm, dtkmc )
 		
 	else:
 		
 		# update the total simulation time
 		Tcurr += dtkmc
+		
 		
 		# run the PDE model to get the new boundary condition value and update xgrow for the KMC model
 		runGasPhasePDE()

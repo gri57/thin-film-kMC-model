@@ -316,11 +316,14 @@ def runSolidOnSolidKMC( N, surfacemat, neighsmat, neighstally, dtkmc, Wa, Wd, Wm
 	return dtkmc
 
 
-#@contract()
-def calcFluidFlowSS():
+#@contract( f_eta_2_0='float', returns='ndarray' )
+def calcFluidFlowSS(f_eta_2_0):
 	
 	"""
-	Solve the fluid flow conservation equation at steady state.
+	Solve the fluid flow conservation equation at steady state (equation 3-1 in Shabnam's PhD thesis).
+	f_eta_2_0  -  the initial value of the second derivative at the first boundary.
+	
+	This page has been helpful: http://www.physics.nyu.edu/pine/pymanual/html/chap9/chap9_scipy.html
 	"""
 	
 	# Parameter values
@@ -329,9 +332,9 @@ def calcFluidFlowSS():
 	params = [rho_b, rho] # pack the parameter values for the ODE solver
 	
 	# Initial values of the dependent variable and its derivatives
-	f0 = 0.0
-	f_eta_0 = 0.0
-	f_eta_2_0 = 0.0
+	f0 = 0.0 # known value of the dependent variable at the first boundary 
+	f_eta_0 = 0.0 # known value of the first derivative at the first boundary
+	
 	fvars = [ f0, f_eta_0, f_eta_2_0 ] # pack the dependent variable values for the ODE solver
 	
 	# Make an array for the independent variable
@@ -342,7 +345,45 @@ def calcFluidFlowSS():
 	# Use the ode solver imported from scipy.integrate
 	fvalues = odeint( FluidFlowSS, fvars, eta, args=(params,)  )
 	
+	# Return the calculated values of the dependent variable and its first two derivatives
 	return fvalues
+
+
+#@contract( f_eta_2_0='float', returns='float' )
+def residualFluidFlowSS(f_eta_2_0):
+	
+	"""
+	Solve the fluid flow conservation equation at steady state (equation 3-1 in Shabnam's PhD thesis).
+	There are three known boundary conditions (dependent variable and its first derivative are 
+	known at the first boundary, and the first derivative is known at the second boundary).
+	Since the second derivative at the first boundary is not known, it has to be solved for 
+	numerically by casting this problem as a roots finding problem.
+	
+	f_eta_2_0  -  the guess at the initial value of the second derivative at the first boundary
+	This page has been helpful: http://www.physics.nyu.edu/pine/pymanual/html/chap9/chap9_scipy.html
+	"""
+	
+	# Parameter values
+	rho_b = 1.0
+	rho = 1.0
+	params = [rho_b, rho] # pack the parameter values for the ODE solver
+	
+	# Initial values of the dependent variable and its derivatives
+	f0 = 0.0 # known value of the dependent variable at the first boundary 
+	f_eta_0 = 0.0 # known value of the first derivative at the first boundary
+	
+	fvars = [ f0, f_eta_0, f_eta_2_0 ] # pack the dependent variable values for the ODE solver
+	
+	# Make an array for the independent variable
+	etaStop = 1.0
+	etaInc = 0.01
+	eta = np.arange( 0., etaStop, etaInc )
+	
+	# Use the ode solver imported from scipy.integrate
+	fvalues = odeint( FluidFlowSS, fvars, eta, args=(params,)  )
+	
+	# Return the difference between the known value of the first derivative at the second boundary and its estimated value
+	return 1.0 - fvalues[-1,1]
 
 
 #@contract( fvars='list', eta='ndarray', params='list', returns='list' )
@@ -351,6 +392,7 @@ def FluidFlowSS( fvars, eta, params ):
 	"""
 	The fluid flow conservation equation at steady state - equation 3-1 
 	of Shabnam's PhD thesis at steady state.
+	This page has been helpful: http://www.physics.nyu.edu/pine/pymanual/html/chap9/chap9_scipy.html
 	"""
 	
 	f, f_eta, f_eta_2 = fvars # unpack the dependent variable, and its first and second derivatives with respect to eta
