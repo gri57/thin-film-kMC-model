@@ -5,9 +5,9 @@ tic()
 
 ''' Create class instances (objects). '''
 
-thinfilm = ThinFilm(10) # the number of sites (N) along an edge of the square film must be provided
+thinfilm = ThinFilm(100) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables(thinfilm.N, 0.1, 1.0, 1.0) # provide N, the coupling time, the total time and the output time
+observables = Observables(thinfilm.N, 0.1, 100.0) # provide N, the coupling time and the total time
 
 # Optimization for calc_xgrow_PDE function - helps to avoid repeating the same calculations
 gaslayer.eqn_3_20_denominator = np.power(2. * gaslayer.a * np.power(thinfilm.N, 2.) * observables.coupling_time, -1.)
@@ -43,15 +43,13 @@ while observables.current_time < observables.total_time_minus_1:
 
 		# update current time
 		observables.current_time += observables.coupling_time
-
-		if (observables.current_time - observables.output_time) < 1e-6: 
-			# calculate observables (roughness, growth rate, thickness...)
-			observables.calculate_observables(thinfilm.surfacemat, counter)
-			# update the index for the output arrays
-			counter += 1
-			# update the next time at which to calculate the output
-			observables.output_time += observables.output_time
-			
+		
+		# calculate observables (roughness, growth rate, thickness...)
+		observables.calculate_observables(thinfilm.surfacemat, counter)
+		
+		# update the index for the output arrays
+		counter += 1
+		
 		# reset parameters
 		thinfilm.dtkmc = 0. 
 		thinfilm.Na = 0.

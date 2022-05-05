@@ -70,7 +70,6 @@ class ThinFilm(object):
 		self.S0 = 0.1 # the sticking coefficient
 		
 		self.nu0 = self.kd0 * np.exp(-self.Ed/(self.R * self.T)) # equation 3-10 of Shabnam's PhD thesis
-		
 		self.A = np.exp((self.Ed - self.Em)/(self.R * self.T)) # equation 3-12 
 		
 		# The rates of individual desorption events. The number of nearest 
@@ -84,8 +83,7 @@ class ThinFilm(object):
 		
 		# The combination of equations 3-8 and 3-13, without xgrow (which will come from an instance of GasLayer)
 		self.Wa_prefactor = self.S0 * self.P * np.power(2. * np.pi * self.m * 8.314 * self.T, -0.5) * np.power(self.Ctot, -1.) * np.power(self.N, 2.)
-		
-		
+
 
 	def adsorption_event(self, x, y):
 		
@@ -418,14 +416,13 @@ class Observables( object ):
 	
 	"""
 	
-	def __init__(self, N, coupling_time, total_time, output_time):
+	def __init__(self, N, coupling_time, total_time):
 		
 		''' Return a new Observables object '''
 		
 		self.N = N # @grigoriy - this is a bit redundant with ThinFilm
 		self.coupling_time = coupling_time
 		self.total_time = total_time
-		self.output_time = output_time
 		
 		self.Nsq_inv = np.power( self.N, -2. )
 		
@@ -434,22 +431,17 @@ class Observables( object ):
 		
 		self.current_time = 0.0 # initial value, updated during simulation
 		
-		self.timepoints = np.zeros(int(round(self.total_time / self.coupling_time)) + 1, 'float') 
-		
 		self.roughness = np.zeros(int(round(self.total_time / self.coupling_time)) + 1, 'float') 
 		
-		self.thickness = np.zeros(int(round(self.total_time / self.coupling_time)) + 1, 'float')  # initial thickness is 1 (only one layer is deposited initially)
+		self.thickness = np.ones(int(round(self.total_time / self.coupling_time)) + 1, 'float') # initial thickness is 1 (only one layer is deposited initially)
 		
-		self.growthrate = np.zeros(int(round(self.total_time / self.coupling_time)) + 1, 'float')  # initial growth rate is zero (at time zero)
+		self.growthrate = np.zeros(int(round(self.total_time / self.coupling_time)) + 1, 'float') # initial growth rate is zero (at time zero)
 		
 		self.surfacemat_previous = np.ones( (self.N,self.N), 'int' ) # @grigoriy - this is a bit redundant with ThinFilm
 		
 		self.total_time_minus_1 = self.total_time - self.coupling_time # for the while loop in sosmain.py
 		
 	def calculate_observables(self, surfacemat, counter):
-		
-		''' Record the simulation time point '''
-		self.timepoints[counter] = self.current_time
 		
 		''' Calculate roughness, growth rate and thickness '''
 		
@@ -474,9 +466,6 @@ class Observables( object ):
 
 		return None
 
-
-	def __eq__(self, other):
-		return self.current_time == other.output_time
 
 
 def MassTransfMoL( x, timepoint, params ):
@@ -703,9 +692,6 @@ def produce_output(observables):
 	
 	"""
 
-	print 'Simulation timepoints'
-	print observables.timepoints
-
 	print 'Rougness results'
 	print observables.roughness
 
@@ -716,24 +702,24 @@ def produce_output(observables):
 	print observables.growthrate
 
 	plt.figure()
-	plt.xlabel( 'simulation timepoints' )
+	plt.xlabel( 'simulation progress' )
 	plt.ylabel( 'surface roughness' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
-	plt.plot( observables.timepoints, observables.roughness )
+	plt.plot( observables.roughness )
 	plt.savefig( 'roughness.png' )
 
 	plt.figure()
-	plt.xlabel( 'simulation timepoints' )
+	plt.xlabel( 'simulation progress' )
 	plt.ylabel( 'growth rate' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
-	plt.plot( observables.timepoints, observables.growthrate )
+	plt.plot( observables.growthrate )
 	plt.savefig( 'growthrate.png' )
 
 	plt.figure()
-	plt.xlabel( 'simulation timepoints' )
+	plt.xlabel( 'simulation progress' )
 	plt.ylabel( 'thickness' )
 	plt.title( 'Lattice size: '+str(observables.N)+'x'+str(observables.N) )
-	plt.plot( observables.timepoints, observables.thickness )
+	plt.plot( observables.thickness )
 	plt.savefig( 'thickness.png' )
 
 	return None
