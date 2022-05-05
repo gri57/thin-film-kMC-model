@@ -45,6 +45,7 @@ class ThinFilm(object):
 		self.N = N
 		
 		self.surfacemat = np.ones( (self.N,self.N), 'int' )
+		self.neighlist = np.zeros( (self.N,self.N,4,2), 'int' ) # N^2 atoms on surface, each has 4 neighbours, each neighbour has 2 coordinates (x,y)
 		self.neighsmat = 5*np.ones( (self.N,self.N), 'int' )
 		self.neighstally = np.zeros( 5, 'int' )
 		self.neighstally[4] = self.N*self.N  # perfectly flat surface - initially all atoms have 5 neighbours
@@ -233,6 +234,52 @@ class ThinFilm(object):
 		return None
 
 
+	def findneighbours_pbc(self):
+		
+		""" Populate the list of neighbours for the on-lattice solid-on-solid 
+		simulation using periodic boundary conditions. 
+		
+		"""
+		
+		# go through all locations on the surface
+		for x in range(self.N):
+			for y in range(self.N):
+				
+				print 'x,y = ', x,y
+				
+				# Store neighbours' coordinates.
+				
+				self.neighlist[x,y,0,...] = [x-1, y]
+				self.neighlist[x,y,1,...] = [x+1, y]
+				self.neighlist[x,y,2,...] = [x, y-1]
+				self.neighlist[x,y,3,...] = [x, y+1]
+		
+				# Implement periodic boundary conditions. 
+				
+				if self.neighlist[x,y,0,0] < 0:
+					print 'self.neighlist[',x,y,',0,0] < 0', self.neighlist[x,y,0,0] < 0
+					# this coordinate must not be less than zero
+					self.neighlist[x,y,0,0] += self.N
+					
+				if self.neighlist[x,y,1,0] >= self.N: 
+					print 'self.neighlist[',x,y,',1,0] >= self.N', self.neighlist[x,y,1,0] >= self.N
+					# this coordinate should always be less than N
+					self.neighlist[x,y,1,0] -= self.N
+					
+				if self.neighlist[x,y,2,1] < 0:
+					print 'self.neighlist[',x,y,',2,1] < 0', self.neighlist[x,y,2,1] < 0
+					# this coordinate must not be less than zero
+					self.neighlist[x,y,2,1] += self.N
+					
+				if self.neighlist[x,y,3,1] >= self.N:
+					print 'self.neighlist[',x,y,',3,1] >= self.N', self.neighlist[x,y,3,1] >= self.N
+					# this coordinate should always be less than N
+					self.neighlist[x,y,3,1] -= self.N
+					
+
+		return None
+
+
 	def calcWa(self, x_grow):
 		
 		""" Update and store the total adsorption rate. """
@@ -262,6 +309,7 @@ class ThinFilm(object):
 		
 		return None
 
+
 	def update_Wd_Wm_Wtot_inv( self ):	
 
 		""" Update and store the total desorption and migration rates. """
@@ -271,6 +319,8 @@ class ThinFilm(object):
 		Wtotal = self.Wa + self.Wd + self.Wm
 		
 		return Wtotal, np.power(Wtotal, -1.)
+
+
 
 class GasLayer(object):
 	
