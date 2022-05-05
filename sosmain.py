@@ -5,7 +5,7 @@ from tictoc import * # import tic() and toc()
 
 thinfilm = ThinFilm( 30 ) # the number of sites (N) along an edge of the square film must be provided
 gaslayer = GasLayer()
-observables = Observables( thinfilm.N, 0.1, 1.0 ) # provide N, the coupling time and the total time
+observables = Observables( thinfilm.N, 0.1, 10.0 ) # provide N, the coupling time and the total time
 
 ''' Calculate the dimensionless stream function '''
 
@@ -28,14 +28,11 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 		run_sos_KMC(thinfilm, gaslayer)
 
 	else:
-		print ''
-		print 'Na, Nd, Nm = ', thinfilm.Na, ',', thinfilm.Nd, ',', thinfilm.Nd
-		print 'Wa, Wd, Wm = ', thinfilm.Wa, ',', thinfilm.Wd, ',', thinfilm.Wm
 		
 		calc_xgrow_PDE( thinfilm, gaslayer, observables )
-		print 'x_grow = ', gaslayer.xgrow
-		if gaslayer.xgrow < 0:
-			raise ValueError('Precursor mole fraction on film surface (xgrow) is negative.')
+
+		if gaslayer.xgrow < 0.0:
+			raise ValueError('Precursor mole fraction on the thin film surface (xgrow) cannot be negative.')
 		
 		observables.update_current_time()
 		observables.calculate_observables(thinfilm.surfacemat)
@@ -46,7 +43,8 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 		thinfilm.Nd = 0.
 		thinfilm.Nm = 0.
 		
-		print 'Current simulation time:', observables.current_time # progress report
+		# progress report
+		print 'Current simulation time:', observables.current_time 
 		''' @grigoriy - for some strange reason if at this point observables.current_time equals to 
 		observables.total_time, Python will still think that current_time is less than total_time
 		and will execute the while loop one more time. As a result, it was necessary to use 

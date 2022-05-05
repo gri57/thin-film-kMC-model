@@ -355,6 +355,9 @@ class GasLayer(object):
 	
 		# Use the IVP ODE solver imported from scipy.integrate
 		fvalues = odeint( self.FluidFlowSS, [ self.f0, self.df_deta_0, df_deta_2_0 ] , self.eta, args=( [ self.rho_b, self.rho ] ,)  )
+		# indexing fvalues as [:,0] will return values of f at all eta values (this is what's needed)
+		# indexing fvalues as [:,1] will return values of df/deta at all eta values
+		# indexing fvalues as [:,2] will return values of d2f/deta2 at all eta values
 		
 		# Obtain and store the stream function values
 		self.f = fvalues[:,0]
@@ -510,8 +513,6 @@ def MassTransfMoL( x, params ):
 	# The time derivative of eta at the eta = inf node is always zero because the boundary condition is x( eta=inf ) = X.
 	derivs[-1] = 0.0
 	
-	#print 'Time derivatives are :', derivs
-	
 	return derivs
 
 
@@ -559,9 +560,7 @@ def MassTransfMoL2( x, timepoint, params ):
 	
 	# The time derivative of eta at the eta = inf node is always zero because the boundary condition is x( eta=inf ) = X.
 	derivs[-1] = 0.0
-	
-	#print 'Time derivatives are :', derivs
-	
+		
 	return derivs
 
 
@@ -570,8 +569,8 @@ def calc_xgrow_PDE( thinfilm, gaslayer, observables ):
 	''' 
 	Calculate the precursor mole fraction on the surface of the thin film, to be used by KMC. 
 	
-	xdx_values: 	the array with mole fraction values and the temporal derivatives of the 
-					mole fraction; the values are calculated using the Method of Lines
+	xvalues: 	the array with mole fraction values at all time points provided to odeint; 
+					the values are calculated using the Method of Lines
 	
 	'''
 	
@@ -581,23 +580,18 @@ def calc_xgrow_PDE( thinfilm, gaslayer, observables ):
 	# Boundary condition (di_x/di_eta value) at eta = 0 (equation 3-6 of Shabnam's PhD thesis)
 	bc0 = gaslayer.RaRd_prefactor * Ra_Rd
 
-	print 'bc0 = ', bc0
-
 	# Use the IVP ODE solver imported from scipy.integrate
-	x_dxdeta_values = odeint( MassTransfMoL2, gaslayer.xprofile, [observables.current_time, observables.current_time+observables.coupling_time], args=( [bc0, gaslayer] ,)  )
-	
-	print ''
-	print 'x_dxdeta_values.shape ', x_dxdeta_values.shape
-	print 'mole fraction profile values: ', x_dxdeta_values[0,:]
-	print ''
-	print 'mole fraction time derivative values: ', x_dxdeta_values[1,:]
-	print ''
-	print ''
-	print ''
-	
+	xvalues = odeint( MassTransfMoL2, gaslayer.xprofile, [observables.current_time, observables.current_time+observables.coupling_time], args=( [bc0, gaslayer] ,)  )
+	''' Current time and the time point immediately following it were provided to odeint.
+	 	Thus, xvalues[0,:] corresponds to x values at the "current time" and xvalues[1,:] 
+	 	corresponds to x values at the time point immediately following (the latter is 
+	 	what's needed).
+	 	@grigoriy - NOTICE that the content of xvalues here is different from GasLayer.calcFluidFlowSS(...),
+	 	in which the output of odeint ("fvalues") contained the values of f and its first and second derivatives. 
+	 	Here xvalues contain only the values of x, not its derivatives, at different time points.'''
+
 	# update and store the mole fraction profile within the gas boundary layer above the thin film
-	time_derivs_x_MoL = MassTransfMoL( gaslayer.xprofile, [bc0, gaslayer] ) 
-	gaslayer.xprofile += time_derivs_x_MoL * observables.coupling_time
+	gaslayer.xprofile = xvalues[1,:]
 	
 	# update and store the value of the mole fraction on the surface of the thin film
 	gaslayer.xgrow = gaslayer.xprofile[0]
@@ -618,8 +612,6 @@ def run_sos_KMC(thinfilm, gaslayer):
 	# Calculate the total rates of adsorption, desorption and migration
 	thinfilm.calcWa(gaslayer.xgrow)
 	Wtotal, Wtotal_inv = thinfilm.update_Wd_Wm_Wtot_inv()
-
-	#print "Wa, Wd, Wm, Wtot = ", thinfilm.Wa, thinfilm.Wd, thinfilm.Wm, Wtotal
 
 	''' Use Wa, Wd and Wm to select adsorption, desorption or migration (a/d/m) '''
 
@@ -731,7 +723,7 @@ def run_sos_KMC(thinfilm, gaslayer):
 	# 1e-53 is practically zero, but prevents np.log(sigma) from giving "-inf" for an answer
 	sigma = np.random.uniform( low=1e-53, high=1.0 )
 	thinfilm.dtkmc += -np.log( sigma ) * Wtotal_inv    # equation 3-16 of Shabnam's PhD thesis
-	# @grigoriy - must reset thinfilm.dtkmc when it exceeds the coupling time
+	# @grigoriy - must reset thinfilm.dtkmc when it exceeds the coupling time (done in sosmain.py)
 	
 	return None
 
