@@ -54,7 +54,8 @@ while observables.current_time < observables.total_time:
 		observables.current_time += observables.coupling_time # @grigoriy - should coupling_time or thinfilm.dtkmc be added to current_time?
 		observables.calc_observables(thinfilm.surfacemat)
 		
-		thinfilm.dtkmc = 0. # reset KMC time
+		# reset parameters
+		thinfilm.dtkmc = 0. 
 		thinfilm.Na = 0.
 		thinfilm.Nd = 0.
 		

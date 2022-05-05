@@ -374,7 +374,6 @@ class GasLayer(object):
 
 
 
-
 class Observables( object ):
 	
 	""" This class contains simulation results. 
@@ -435,6 +434,7 @@ class Observables( object ):
 		self.surfacemat_previous = surfacemat.copy()
 
 		return None
+
 
 
 def MassTransfMoL( x, tao, params ):
@@ -679,5 +679,4 @@ def produce_output(observables):
 	plt.show()
 
 	return None
-
 
