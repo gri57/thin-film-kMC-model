@@ -616,11 +616,8 @@ def run_sos_KMC(thinfilm, gaslayer):
 		# find out the x and y indeces of atoms that have the specified number of neighbours
 		indecesofatoms = np.where( thinfilm.neighsmat == neighclass )
 		
-		# find out how many atoms have the specified number of neighbours
-		numofatoms = len( indecesofatoms[0] )
-		
 		# choose one of those atoms at random
-		chosenatom = np.random.random_integers( 0, numofatoms-1 )
+		chosenatom = np.random.random_integers(0, len(indecesofatoms[0])-1)
 		
 		# store the atom's initial x and y coordinates
 		thinfilm.xloc = indecesofatoms[0][chosenatom]
