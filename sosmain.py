@@ -31,9 +31,6 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 		
 		calc_xgrow_PDE( thinfilm, gaslayer, observables )
 
-		if gaslayer.xgrow < 0.0:
-			raise ValueError('Precursor mole fraction on the thin film surface (xgrow) cannot be negative.')
-		
 		observables.update_current_time()
 		observables.calculate_observables(thinfilm.surfacemat)
 		
@@ -43,8 +40,6 @@ while observables.get_current_time() < (observables.total_time - observables.cou
 		thinfilm.Nd = 0.
 		thinfilm.Nm = 0.
 		
-		# progress report
-		print 'Current simulation time:', observables.current_time 
 		''' @grigoriy - for some strange reason if at this point observables.current_time equals to 
 		observables.total_time, Python will still think that current_time is less than total_time
 		and will execute the while loop one more time. As a result, it was necessary to use 
