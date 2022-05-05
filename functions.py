@@ -36,9 +36,6 @@ def desorption_event( N, x, y, surfacemat, neighsmat, neighstally ):
 	# Remove an atom from the surface at the specified site.
 	surfacemat[x,y] -= 1
 	
-	if surfacemat[x,y] <= 0:
-		print 'The number of atoms at a surface site is zero or less.'
-
 	# Update the number of neighbours at each site affected by desorption, use periodic boundaries.
 	neighsmat, neighstally = update_neighs_pbc( N, 'des', x, y, surfacemat, neighsmat, neighstally )
 	
