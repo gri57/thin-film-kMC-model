@@ -517,9 +517,6 @@ def runGasPhasePDE( N, dtcouple, Na, Nd, fvalues, xvalues, neighstally ):
 	# Get the mole fraction of the precursor on the surface
 	xgrow = xvalues[0][0]
 
-	#if xgrow == 0.0:
-		#raise RuntimeError('Precursor mole fraction on the surface is zero.')
-
 	# Calculate Pa (equation 3-8 of Shabnam's thesis)
 	Pa = S0 * P * xgrow * np.power( 2.*np.pi*m*R*T, -0.5 ) * np.power( Ctot, -1.0 )
 

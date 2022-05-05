@@ -49,7 +49,7 @@ xinit = np.zeros( max(fvalues.shape), 'float' )
 xinit[-1] = X
 
 # Run initial calculations (gas is provided to the chamber, when it makes its way down to the substrate adsorption/desorption/migration begins)
-Wa, Wd, Wm, xvalues = runGasPhasePDE( N, dtcouple, Na, Nd, fvalues, xinit, neighstally )
+Wa, Wd, Wm, xvalues = runGasPhasePDE( N, dtcouple*1e-6, Na, Nd, fvalues, xinit, neighstally )
 
 # Carry on with the simulation until the final time is reached
 while Tcurr < Ttot:
@@ -79,3 +79,4 @@ while Tcurr < Ttot:
 		
 		
 print "Done!"
+print surfacemat
